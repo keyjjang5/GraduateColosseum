@@ -4,11 +4,6 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    // 더블클릭 테스트 용
-    public float m_DoubleClickSecond = 0.25f;
-    private bool m_IsOneClick = false;
-    private double m_Timer = 0;
-
     private Animator animator;
 
     Transform center;
@@ -20,8 +15,39 @@ public class PlayerController : MonoBehaviour
     Queue<int> commands;
     int postCommand = 0;
     float postCommandTime = 0;
+    // 커맨드 입력
+    // Vector2(horizontal, vertical)
+    Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
+        {
+            {new Vector2(-1, -1), Vector3.back + Vector3.right },
+            {new Vector2(-1, 0), Vector3.back },
+            {new Vector2(-1, 1), Vector3.back + Vector3.left },
+
+            {new Vector2(0, -1), Vector3.right },
+            {new Vector2(0, 0), Vector3.zero },
+            {new Vector2(0, 1), Vector3.left },
+
+            {new Vector2(1, -1), Vector3.forward + Vector3.right },
+            {new Vector2(1, 0), Vector3.forward },
+            {new Vector2(1, 1), Vector3.forward + Vector3.left }
+        };
+    Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
+        {
+            {new Vector2(-1, -1), 1 },
+            {new Vector2(-1, 0), 4 },
+            {new Vector2(-1, 1), 7 },
+
+            {new Vector2(0, -1), 2 },
+            {new Vector2(0, 0), 5 },
+            {new Vector2(0, 1), 8 },
+
+            {new Vector2(1, -1), 3 },
+            {new Vector2(1, 0), 6 },
+            {new Vector2(1, 1), 9 }
+        };
 
     State state;
+    public AttackArea.AttackInfo attackInfo = new AttackArea.AttackInfo();
     // Start is called before the first frame update
     void Start()
     {
@@ -31,6 +57,7 @@ public class PlayerController : MonoBehaviour
         commands = new Queue<int>();
 
         state = State.Standing;
+        attackInfo.Init();
     }
 
     
@@ -47,134 +74,15 @@ public class PlayerController : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.K))
             activeRK();
 
-        transform.LookAt(center);
-
-        // 테스트
-        if (Input.GetMouseButtonDown(0))
-        {
-            if (!m_IsOneClick)
-            {
-                m_Timer = Time.time;
-                m_IsOneClick = true;
-            }
-            else if (m_IsOneClick && ((Time.time - m_Timer) < m_DoubleClickSecond))
-            {
-                m_IsOneClick = false;
-                //아래에 더블클릭에서 처리하고싶은 이벤트 작성 
-            }
-        }      
+        transform.LookAt(center);    
     }
 
     
     private void FixedUpdate()
     {
-        // 커맨드 테스트 211017
+        // 커맨드
         float vertical = Input.GetAxisRaw("Vertical");
         float horizontal = Input.GetAxisRaw("Horizontal");
-
-        // 커맨드 입력
-        /*if (horizontal > 0)
-        {
-            if (vertical > 0)
-            {
-                // 9방향
-                //Debug.Log("9");
-                if (postCommand != 9)
-                    commandChange(9);
-            }
-            else if (vertical < 0)
-            {
-                // 3방향
-                //Debug.Log("3");
-                if (postCommand != 3)
-                    commandChange(3);
-            }
-            else
-            {
-                // 6방향
-                //Debug.Log("6");
-                if (postCommand != 6)
-                    commandChange(6);
-                if (searchCommands("656") && animator.GetBool("FrontDash") == false)
-                    frontDash();
-            }
-        }
-        else if (horizontal < 0)
-        {
-            if (vertical > 0)
-            {
-                // 7방향
-                //Debug.Log("7");
-                if (postCommand != 7)
-                    commandChange(7);
-            }
-            else if (vertical < 0)
-            {
-                // 1방향
-                //Debug.Log("1");
-                if (postCommand != 1)
-                    commandChange(1);
-            }
-            else
-            {
-                // 4방향
-                //Debug.Log("4");
-                if (postCommand != 4)
-                    commandChange(4);
-            }
-        }
-        else if (vertical > 0)
-        {
-            // 8방향
-            //Debug.Log("8");
-            if (postCommand != 8)
-                commandChange(8);
-        }
-        else if (vertical < 0)
-        {
-            // 2방향
-            //Debug.Log("2");
-            if (postCommand != 2)
-                commandChange(2);
-        }
-        else
-        {
-            // 중립
-            //Debug.Log("5");
-            if (postCommand != 5)
-                commandChange(5);
-        }
-        */
-        // Vector2(horizontal, vertical)
-        Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
-        {
-            {new Vector2(-1, -1), Vector3.back + Vector3.right },
-            {new Vector2(-1, 0), Vector3.back },
-            {new Vector2(-1, 1), Vector3.back + Vector3.left },
-
-            {new Vector2(0, -1), Vector3.right },
-            {new Vector2(0, 0), Vector3.zero },
-            {new Vector2(0, 1), Vector3.left },
-
-            {new Vector2(1, -1), Vector3.forward + Vector3.right },
-            {new Vector2(1, 0), Vector3.forward },
-            {new Vector2(1, 1), Vector3.forward + Vector3.left }
-        };
-
-        Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
-        {
-            {new Vector2(-1, -1), 1 },
-            {new Vector2(-1, 0), 4 },
-            {new Vector2(-1, 1), 7 },
-
-            {new Vector2(0, -1), 2 },
-            {new Vector2(0, 0), 5 },
-            {new Vector2(0, 1), 8 },
-
-            {new Vector2(1, -1), 3 },
-            {new Vector2(1, 0), 6 },
-            {new Vector2(1, 1), 9 }
-        };
 
         horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
         if (postCommand != command)
@@ -190,7 +98,7 @@ public class PlayerController : MonoBehaviour
             transform.Translate(velo);
 
             animator.SetBool("Walk", true);
-            if(velo == Vector3.zero)
+            if (velo == Vector3.zero)
                 animator.SetBool("Walk", false);
 
 
@@ -202,47 +110,6 @@ public class PlayerController : MonoBehaviour
                 if (searchCommands("454") && animator.GetBool("BackDash") == false)
                     backDash();
         }
-        // horizontal, vertical을 통한 이동
-        //if (horizontal > 0)
-        //{
-        //    //Debug.Log("정면으로 걷기");
-        //    velocity = Vector3.forward;
-        //    velocity = Vector3.Lerp(currentVelocity, velocity, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-        //    transform.Translate(velocity);
-
-        //    animator.SetBool("Walk", true);
-        //}
-        //if (horizontal < 0)
-        //{
-        //    //Debug.Log("후면으로 걷기");
-        //    velocity = Vector3.back;
-        //    velocity = Vector3.Lerp(currentVelocity, velocity, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-        //    transform.Translate(velocity);
-
-        //    animator.SetBool("Walk", true);
-        //}
-        //if (vertical > 0)
-        //{
-        //    //Debug.Log("좌측면으로 걷기");
-        //    velocity = Vector3.left;
-        //    velocity = Vector3.Lerp(currentVelocity, velocity, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-        //    transform.Translate(velocity);
-
-        //    animator.SetBool("Walk", true);
-        //}
-        //if (vertical < 0)
-        //{
-        //    //Debug.Log("우측면으로 걷기");
-        //    velocity = Vector3.right;
-        //    velocity = Vector3.Lerp(currentVelocity, velocity, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-        //    transform.Translate(velocity);
-
-        //    animator.SetBool("Walk", true);
-        //}
-        //if (vertical == 0 && horizontal == 0)
-        //{
-        //    animator.SetBool("Walk", false);
-        //}
     }
 
     // 커맨드 queue 관리
@@ -282,15 +149,26 @@ public class PlayerController : MonoBehaviour
     // 왼손 공격 탐색, 실행
     void activeLP()
     {
+        Dictionary<int, AttackArea.AttackInfo> attackInfoDict = new Dictionary<int, AttackArea.AttackInfo>()
+        {
+            {1, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.upper, false) },
+            {2, new AttackArea.AttackInfo(15, transform, AttackArea.AttackType.middle, false) },
+            {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, false) }
+        };
         // 선자세
         if (state == State.Standing)
         {
+            int code = 0;
+
             if (searchCommands("56"))
-                animator.SetInteger("LPunch", 2);
+                code = 2;
             else if (searchCommands("53"))
-                animator.SetInteger("LPunch", 3);
+                code = 3;
             else
-                animator.SetInteger("LPunch", 1);
+                code = 1;
+
+            animator.SetInteger("LPunch", code);
+            attackInfoDict.TryGetValue(code, out attackInfo);
             state = State.Attacking;
         }
 
@@ -374,6 +252,7 @@ public class PlayerController : MonoBehaviour
         animator.SetInteger("LKick", 0);
         animator.SetInteger("RKick", 0);
 
+        attackInfo.Init();
         state = State.Standing;
     }
 
