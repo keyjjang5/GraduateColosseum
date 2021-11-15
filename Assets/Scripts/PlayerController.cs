@@ -15,6 +15,7 @@ public class PlayerController : MonoBehaviour
     Queue<int> commands;
     int postCommand = 0;
     float postCommandTime = 0;
+    float currentCommandTime = 0;
     // 커맨드 입력
     // Vector2(horizontal, vertical)
     Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
@@ -46,8 +47,10 @@ public class PlayerController : MonoBehaviour
             {new Vector2(1, 1), 9 }
         };
 
-    State state;
+    Status status;
     public AttackArea.AttackInfo attackInfo = new AttackArea.AttackInfo();
+    FightManager fightManager;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -56,11 +59,16 @@ public class PlayerController : MonoBehaviour
 
         commands = new Queue<int>();
 
-        state = State.Standing;
+        status = GetComponent<Status>();
+        status.CurrentState = State.Standing;
+
         attackInfo.Init();
+
+        fightManager = FindObjectOfType<FightManager>();
+
     }
 
-    
+
     // Update is called once per frame
     void Update()
     {
@@ -88,26 +96,30 @@ public class PlayerController : MonoBehaviour
         if (postCommand != command)
             commandChange(command);
 
-        if (state == State.Standing)
+        if (status.CurrentState == State.Standing)
         {
             // 이동 영역
             Vector3 velo = Vector3.zero;
-            horiVer.TryGetValue(new Vector2(horizontal, vertical), out velo);
+            horiVer.TryGetValue(new Vector2(horizontal, vertical), out velo );
 
+            //velocity.x = 1;
+            //velocity.z = 1;
+            //GetComponent<Rigidbody>().AddForce(velocity);
             velo = Vector3.Lerp(currentVelocity, velo, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-            transform.Translate(velo);
+            GetComponent<Rigidbody>().MovePosition(transform.position+velo);
+            //transform.Translate(velo);
 
             animator.SetBool("Walk", true);
             if (velo == Vector3.zero)
                 animator.SetBool("Walk", false);
 
-
+            
             // 커맨드 영역
             if (command == 6)
-                if (searchCommands("656") && animator.GetBool("FrontDash") == false)
+                if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
                     frontDash();
             if (command == 4)
-                if (searchCommands("454") && animator.GetBool("BackDash") == false)
+                if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
                     backDash();
         }
     }
@@ -116,10 +128,11 @@ public class PlayerController : MonoBehaviour
     void commandChange(int i)
     {
         commands.Enqueue(i);
-        if (commands.Count > 10)
+        if (commands.Count > 4)
             commands.Dequeue();
         postCommand = i;
-        postCommandTime = Time.time;
+        postCommandTime = currentCommandTime;
+        currentCommandTime = Time.time;
 
         string s = null;
         foreach (int j in commands)
@@ -128,13 +141,13 @@ public class PlayerController : MonoBehaviour
     }
 
     // 커맨드 찾기
-    bool searchCommands(string command)
+    bool searchCommands(string command) 
     {
         string s = null;
         foreach (int i in commands)
             s += i;
         bool b = s.Contains(command);
-        Debug.Log(command + "는 : " + b);
+        //Debug.Log(command + "는 : " + b);
 
         return b;
     }
@@ -156,7 +169,7 @@ public class PlayerController : MonoBehaviour
             {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, false) }
         };
         // 선자세
-        if (state == State.Standing)
+        if (status.CurrentState == State.Standing)
         {
             int code = 0;
 
@@ -169,7 +182,7 @@ public class PlayerController : MonoBehaviour
 
             animator.SetInteger("LPunch", code);
             attackInfoDict.TryGetValue(code, out attackInfo);
-            state = State.Attacking;
+            status.CurrentState = State.Attacking;
         }
 
         clearCommands();
@@ -179,7 +192,7 @@ public class PlayerController : MonoBehaviour
     void activeRP()
     {
         // 선자세
-        if (state == State.Standing)
+        if (status.CurrentState == State.Standing)
         {
             if (searchCommands("56"))
                 animator.SetInteger("RPunch", 2);
@@ -187,7 +200,7 @@ public class PlayerController : MonoBehaviour
                 animator.SetInteger("RPunch", 3);
             else
                 animator.SetInteger("RPunch", 1);
-            state = State.Attacking;
+            status.CurrentState = State.Attacking;
         }
 
         clearCommands();
@@ -197,13 +210,13 @@ public class PlayerController : MonoBehaviour
     void activeLK()
     {
         // 선자세
-        if (state == State.Standing)
+        if (status.CurrentState == State.Standing)
         {
             if (searchCommands("59"))
                 animator.SetInteger("LKick", 2);
             else
                 animator.SetInteger("LKick", 1);
-            state = State.Attacking;
+            status.CurrentState = State.Attacking;
             animator.SetBool("Walk", false);
         }
 
@@ -214,13 +227,13 @@ public class PlayerController : MonoBehaviour
     void activeRK()
     {
         // 선자세
-        if (state == State.Standing)
+        if (status.CurrentState == State.Standing)
         {
             if (searchCommands("52"))
                 animator.SetInteger("RKick", 2);
             else
                 animator.SetInteger("RKick", 1);
-            state = State.Attacking;
+            status.CurrentState = State.Attacking;
         }
 
         clearCommands();
@@ -229,6 +242,7 @@ public class PlayerController : MonoBehaviour
     // 앞대시
     void frontDash()
     {
+        Debug.Log("시간간격 : " + (Time.time - postCommandTime));
         animator.SetBool("FrontDash", true);
     }
 
@@ -253,7 +267,7 @@ public class PlayerController : MonoBehaviour
         animator.SetInteger("RKick", 0);
 
         attackInfo.Init();
-        state = State.Standing;
+        status.CurrentState = State.Standing;
     }
 
     void Hit()
@@ -272,7 +286,7 @@ public class PlayerController : MonoBehaviour
 }
 
 // 상태
-enum State
+public enum State
 {
     // 선자세
     Standing,

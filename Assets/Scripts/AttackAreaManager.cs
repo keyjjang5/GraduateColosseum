@@ -17,6 +17,9 @@ public class AttackAreaManager : MonoBehaviour
             attackAreaColliders[attackAreaCnt] = attackAreas[attackAreaCnt].GetComponent<Collider>();
             attackAreaColliders[attackAreaCnt].enabled = false;  // 초깃값은 false로 한다.
         }
+
+        // Hit시 바로 작동정지
+        GameObject.Find("2pPlayer").GetComponent<EnemyController>().HitEvent.AddListener(EndAttackHit);
     }
 
     // Update is called once per frame

@@ -52,11 +52,12 @@ public class AttackArea : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         // 공격 당한 상대의 Damage 메시지를 보낸다.
-        //other.SendMessage("Damage", GetAttackInfo());
+        other.transform.root.SendMessage("Hit", playerController.attackInfo);
+        //other.SendMessage("Damage", playerController.attackInfo);
         //if (other.CompareTag("EnemyHit"))
 
         // 상대방에게 공격정보 전달
-        enemyController.Hit(playerController.attackInfo);
+        //enemyController.Hit(playerController.attackInfo);
         Debug.Log("TriggerCheck : " + other.name);
     }
 
