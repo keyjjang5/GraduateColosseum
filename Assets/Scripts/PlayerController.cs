@@ -20,17 +20,17 @@ public class PlayerController : MonoBehaviour
     // Vector2(horizontal, vertical)
     Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
         {
-            {new Vector2(-1, -1), Vector3.back + Vector3.right },
+            {new Vector2(-1, -1), Vector3.zero },
             {new Vector2(-1, 0), Vector3.back },
-            {new Vector2(-1, 1), Vector3.back + Vector3.left },
+            {new Vector2(-1, 1), Vector3.zero },
 
-            {new Vector2(0, -1), Vector3.right },
+            {new Vector2(0, -1), Vector3.zero },
             {new Vector2(0, 0), Vector3.zero },
-            {new Vector2(0, 1), Vector3.left },
+            {new Vector2(0, 1), Vector3.zero },
 
-            {new Vector2(1, -1), Vector3.forward + Vector3.right },
+            {new Vector2(1, -1), Vector3.zero },
             {new Vector2(1, 0), Vector3.forward },
-            {new Vector2(1, 1), Vector3.forward + Vector3.left }
+            {new Vector2(1, 1), Vector3.zero }
         };
     Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
         {
@@ -121,6 +121,23 @@ public class PlayerController : MonoBehaviour
             if (command == 4)
                 if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
                     backDash();
+            if (command == 1 || command == 2 || command == 3)
+                sit();
+            if (command == 7 || command == 8 || command == 9)
+                jump();
+            if (command == 5)
+                Idle();
+        }
+        else if(status.CurrentState == State.Sitting)
+        {
+            if (command == 1)
+                animator.SetBool("BWalk", true);
+            if (command == 3)
+                animator.SetBool("Walk", true);
+            if (command == 2)
+                sit();
+            if (command == 5)
+                Idle();
         }
     }
 
@@ -169,10 +186,9 @@ public class PlayerController : MonoBehaviour
             {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, false) }
         };
         // 선자세
+        int code = 0;
         if (status.CurrentState == State.Standing)
         {
-            int code = 0;
-
             if (searchCommands("56"))
                 code = 2;
             else if (searchCommands("53"))
@@ -181,9 +197,14 @@ public class PlayerController : MonoBehaviour
                 code = 1;
 
             animator.SetInteger("LPunch", code);
-            attackInfoDict.TryGetValue(code, out attackInfo);
-            status.CurrentState = State.Attacking;
         }
+        if(status.CurrentState == State.Sitting)
+        {
+            
+        }
+
+        if (code != 0)
+            attackInfoDict.TryGetValue(code, out attackInfo);
 
         clearCommands();
     }
@@ -202,6 +223,11 @@ public class PlayerController : MonoBehaviour
                 animator.SetInteger("RPunch", 1);
             status.CurrentState = State.Attacking;
         }
+        if(status.CurrentState == State.Sitting)
+        {
+            if (postCommand == 5)
+                animator.SetInteger("RPunch", 4);
+        }
 
         clearCommands();
     }
@@ -219,6 +245,15 @@ public class PlayerController : MonoBehaviour
             status.CurrentState = State.Attacking;
             animator.SetBool("Walk", false);
         }
+        if (status.CurrentState == State.Sitting)
+        {
+            if (searchCommands("2"))
+                animator.SetInteger("LKick", 3);
+        }
+
+
+        //if (code != 0)
+        //    attackInfoDict.TryGetValue(code, out attackInfo);
 
         clearCommands();
     }
@@ -234,6 +269,11 @@ public class PlayerController : MonoBehaviour
             else
                 animator.SetInteger("RKick", 1);
             status.CurrentState = State.Attacking;
+        }
+        if (status.CurrentState == State.Sitting)
+        {
+            if (searchCommands("3"))
+                animator.SetInteger("RKick", 3);
         }
 
         clearCommands();
@@ -252,6 +292,38 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("BackDash", true);
     }
 
+    // 앉기
+    void sit()
+    {
+        animator.SetBool("Sit", true);
+        animator.SetBool("Walk", false);
+        animator.SetBool("BWalk", false);
+
+        status.CurrentState = State.Sitting;
+    }
+
+    // 기본상태
+    void Idle()
+    {
+        animator.SetBool("Sit", false);
+        //status.CurrentState = State.Standing;
+    }
+
+    void Standing()
+    {
+        status.CurrentState = State.Standing;
+    }
+
+    void jump()
+    {
+        animator.SetBool("Jump", true);
+    }
+
+    void EndJump()
+    {
+        animator.SetBool("Jump", false);
+    }
+
     void DashEnd()
     {
         animator.SetBool("FrontDash", false);
@@ -259,6 +331,10 @@ public class PlayerController : MonoBehaviour
         clearCommands();
     }
 
+    void StartAttack()
+    {
+        status.CurrentState = State.Attacking;
+    }
     void AttackEnd()
     {
         animator.SetInteger("LPunch", 0);
@@ -283,17 +359,4 @@ public class PlayerController : MonoBehaviour
     {
 
     }
-}
-
-// 상태
-public enum State
-{
-    // 선자세
-    Standing,
-    // 앉은자세
-    Sitting,
-    // 공격 중
-    Attacking,
-    // 맞는 중
-    Hited
 }

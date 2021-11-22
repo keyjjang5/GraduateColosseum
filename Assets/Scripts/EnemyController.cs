@@ -18,6 +18,8 @@ public class EnemyController : MonoBehaviour
         status = GetComponent<Status>();
 
         manager = GameObject.Find("Manager");
+
+        HitEvent.AddListener(() => status.CurrentState = State.Hited);
     }
 
     // Update is called once per frame
@@ -45,5 +47,7 @@ public class EnemyController : MonoBehaviour
     {
         isHit = false;
         animator.SetBool("Hited", false);
+
+        status.CurrentState = State.Standing;
     }
 }

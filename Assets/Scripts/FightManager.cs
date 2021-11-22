@@ -34,12 +34,13 @@ public class FightManager : MonoBehaviour
         
     }
 
-    public void ReceiveCall(string s)
-    {
-        // 상태변화 알림 > UI갱신
-        if (s == "UIUpdate") ;
+    // 사용X
+        //public void ReceiveCall(string s)
+        //{
+        //    // 상태변화 알림 > UI갱신
+        //    if (s == "UIUpdate")
             
-    }
+        //}
 
     void UIUpdate()
     {
