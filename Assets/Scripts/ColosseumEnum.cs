@@ -14,3 +14,14 @@ public enum State
     // 맞는 중
     Hited
 }
+
+// 가드 상태
+public enum Guard
+{
+    // 가드안함
+    NoGuard,
+    // 선자세 가드
+    Stand,
+    // 앉은자세 가드
+    Crouch
+}

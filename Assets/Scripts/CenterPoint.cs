@@ -14,7 +14,7 @@ public class CenterPoint : MonoBehaviour
         player2 = GameObject.Find("2pPlayer").transform;
 
         center = (player1.position + player2.position) / 2;
-        center.y = 0.2f;
+        center.y = 0;
         transform.position = center;
 
         Vector3 temp = player1.position;
@@ -27,7 +27,7 @@ public class CenterPoint : MonoBehaviour
     void Update()
     {
         center = (player1.position + player2.position) / 2;
-        center.y = 0.2f;
+        center.y = 0;
         transform.position = center;
 
         Vector3 temp = player1.position;

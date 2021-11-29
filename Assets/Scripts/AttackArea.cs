@@ -17,28 +17,28 @@ public class AttackArea : MonoBehaviour
         public int attackPower; // 이 공격의 공격력.
         public Transform attacker; // 공격자.
         public AttackType attackType;
-        public bool counter;
+        public Vector3 force;
 
-        public AttackInfo(int power, Transform attacker, AttackType type, bool counter)
+        public AttackInfo(int power, Transform attacker, AttackType type, Vector3 force)
         {
             attackPower = power;
             this.attacker = attacker;
             attackType = type;
-            this.counter = counter;
+            this.force = force;
         }
         public AttackInfo()
         {
             attackPower = 0;
             this.attacker = null;
             attackType = 0;
-            this.counter = false;
+            this.force = Vector3.zero;
         }
         public void Init()
         {
             attackPower = 0;
             this.attacker = null;
             attackType = 0;
-            this.counter = false;
+            this.force = Vector3.zero;
         }
     }
     public enum AttackType

@@ -10,12 +10,17 @@ public class Status : MonoBehaviour
     public int Hp { get { return hp; } }
     State currentState;
     public State CurrentState { get { return currentState; } set { currentState = value; } }
+
+    Guard guard;
+    public Guard Guard { get { return guard; } set { guard = value; } }
+
     // Start is called before the first frame update
     void Start()
     {
         maxHp = 100;
         hp = maxHp;
         currentState = State.Standing;
+        guard = Guard.Stand;
     }
 
     // Update is called once per frame
@@ -30,7 +35,7 @@ public class Status : MonoBehaviour
         currentState = State.Standing;
     }
 
-    public void Hit(int damage)
+    public void Damaged(int damage)
     {
         hp -= damage;
     }

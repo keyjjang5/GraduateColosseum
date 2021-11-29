@@ -15,7 +15,7 @@ public class CameraController : MonoBehaviour
         player2 = GameObject.Find("2pPlayer");
         center = GameObject.Find("CenterPoint").transform;
 
-        transform.position = new Vector3(60, 2, (player1.transform.position.z + player2.transform.position.z) / 2);
+        transform.position = new Vector3(18, 1.5f, (player1.transform.position.z + player2.transform.position.z) / 2);
         Quaternion q = Quaternion.LookRotation(center.position - transform.position);
         transform.rotation = q;
     }
@@ -28,10 +28,14 @@ public class CameraController : MonoBehaviour
         v2.y = 5;
         Vector3 perp = Vector3.Cross(v1, v2);
 
-        transform.position = center.position + perp.normalized * 8 + new Vector3(0, 2, 0);
+        transform.position = center.position + perp.normalized * 4 + new Vector3(0, 1.5f, 0);
+        float distance = Vector3.Distance(player1.transform.position, player2.transform.position);
+        if (distance > 7)
+            transform.position += perp.normalized * (distance - 7);
         //Debug.Log("perp : " + perp);
-
-        Quaternion q = Quaternion.LookRotation(center.position - transform.position);
+        Vector3 temp = center.position - transform.position;
+        temp.y = 0;
+        Quaternion q = Quaternion.LookRotation(temp);
         transform.rotation = q;
     }
 }
