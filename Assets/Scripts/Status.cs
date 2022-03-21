@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Colosseum;
 
 public class Status : MonoBehaviour
 {
@@ -8,7 +9,7 @@ public class Status : MonoBehaviour
     public int MaxHp { get { return maxHp; } }
     int hp;
     public int Hp { get { return hp; } }
-    State currentState;
+    public State currentState;
     public State CurrentState { get { return currentState; } set { currentState = value; } }
 
     Guard guard;

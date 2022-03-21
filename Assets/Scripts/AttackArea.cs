@@ -58,7 +58,7 @@ public class AttackArea : MonoBehaviour
 
         // 상대방에게 공격정보 전달
         //enemyController.Hit(playerController.attackInfo);
-        Debug.Log("TriggerCheck : " + other.name);
+        //Debug.Log("TriggerCheck : " + other.name);
     }
 
 

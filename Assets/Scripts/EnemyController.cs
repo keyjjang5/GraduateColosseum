@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
+using Colosseum;
+
 public class EnemyController : MonoBehaviour
 {
     bool isHit;
     Animator animator;
+    Animator opponentAnimator;
     Status status;
     public UnityEvent HitEvent;
     GameObject manager;
@@ -15,11 +18,14 @@ public class EnemyController : MonoBehaviour
     {
         isHit = false;
         animator = GetComponent<Animator>();
+        opponentAnimator = GameObject.Find("1pPlayer").GetComponent<Animator>();
         status = GetComponent<Status>();
 
         manager = GameObject.Find("Manager");
 
         HitEvent.AddListener(() => status.CurrentState = State.Hited);
+
+      
     }
 
     // Update is called once per frame
@@ -29,6 +35,10 @@ public class EnemyController : MonoBehaviour
         {
             sit();
             status.Guard = Guard.Crouch;
+        }
+        else
+        {   // юс╫ц
+            //status.Guard = Guard.NoGuard;
         }
     }
 
@@ -78,6 +88,7 @@ public class EnemyController : MonoBehaviour
         animator.SetBool("Hited", true);
         HitEvent.Invoke();
         status.Damaged(attackInfo.attackPower);
+        GetComponent<Rigidbody>().velocity = Vector3.zero;
         GetComponent<Rigidbody>().AddForce(attackInfo.force);
 
         manager.SendMessage("UIUpdate");
@@ -115,6 +126,8 @@ public class EnemyController : MonoBehaviour
 
         GetComponent<Rigidbody>().AddForce(attackInfo.force);
 
+        opponentAnimator.SetBool("Blocked", true);
+
         manager.SendMessage("UIUpdate");
     }
 
@@ -124,6 +137,13 @@ public class EnemyController : MonoBehaviour
 
         GetComponent<Rigidbody>().AddForce(attackInfo.force);
 
+        opponentAnimator.SetBool("Blocked", true);
+
         manager.SendMessage("UIUpdate");
+    }
+
+    void Crouching()
+    {
+        status.CurrentState = State.Sitting;
     }
 }

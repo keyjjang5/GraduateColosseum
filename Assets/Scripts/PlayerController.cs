@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+using Colosseum;
+
 public class PlayerController : MonoBehaviour
 {
     private Animator animator;
@@ -80,7 +82,9 @@ public class PlayerController : MonoBehaviour
             // 훅
             {2, new AttackArea.AttackInfo(15, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 어퍼
-            {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, Vector3.zero) }
+            {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 진짜 잽
+            {4, new AttackArea.AttackInfo(5, transform, AttackArea.AttackType.upper, new Vector3(0,500f,200f)) },
         };
         attackInfoDictRP = new Dictionary<int, AttackArea.AttackInfo>()
         {
@@ -91,7 +95,11 @@ public class PlayerController : MonoBehaviour
             // 어퍼
             {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, new Vector3(0, 2000f, 200f)) },
             // 기상 어퍼
-            {4, new AttackArea.AttackInfo(15, transform, AttackArea.AttackType.middle, new Vector3(0,500f,200f)) }
+            {4, new AttackArea.AttackInfo(15, transform, AttackArea.AttackType.middle, new Vector3(0,500f,200f)) },
+            // 어퍼mk2
+            {5, new AttackArea.AttackInfo(15, transform, AttackArea.AttackType.middle, new Vector3(0,500f,200f)) },
+            // 뒤오손
+            {6, new AttackArea.AttackInfo(19, transform, AttackArea.AttackType.upper, Vector3.zero) }
         };
         attackInfoDictLK = new Dictionary<int, AttackArea.AttackInfo>()
         {
@@ -100,16 +108,23 @@ public class PlayerController : MonoBehaviour
             // 쌍기각, 띄우기
             {2, new AttackArea.AttackInfo(24, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 앉아 짠발
-            {3, new AttackArea.AttackInfo(8, transform, AttackArea.AttackType.lower, Vector3.zero) }
+            {3, new AttackArea.AttackInfo(8, transform, AttackArea.AttackType.lower, Vector3.zero) },
+            // 경천
+            {4, new AttackArea.AttackInfo(18, transform, AttackArea.AttackType.middle, Vector3.zero) }
         };
         attackInfoDictRK = new Dictionary<int, AttackArea.AttackInfo>()
         {
             // 하이킥, 카운터시 띄우기
-            {1, new AttackArea.AttackInfo(11, transform, AttackArea.AttackType.upper, new Vector3(0, 3000f, 500f)) },
+            {1, new AttackArea.AttackInfo(11, transform, AttackArea.AttackType.upper, new Vector3(0, 2000f, 500f)) },
             // 짠발
             {2, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.lower, Vector3.zero) },
             // 이슬, 넘어짐
-            {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.lower, Vector3.zero) }
+            {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.lower, Vector3.zero) },
+            // 중단 오리발
+            {4, new AttackArea.AttackInfo(13, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 기상 오른발
+            {5, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) }
+
         };
     }
 
@@ -127,10 +142,10 @@ public class PlayerController : MonoBehaviour
         else if (Input.GetKeyDown(KeyCode.K))
             activeRK();
 
-        transform.LookAt(center);    
+        transform.LookAt(center);
     }
 
-    
+
     private void FixedUpdate()
     {
         // 커맨드
@@ -161,21 +176,32 @@ public class PlayerController : MonoBehaviour
             //GetComponent<Rigidbody>().MovePosition(transform.position+velo);
             //transform.Translate(velo);
 
+            // 전진
             if (command == 6)
+            {
                 animator.SetBool("Walk", true);
+                animator.SetTrigger("Trigger");
+            }
+            // 후진
             else if (command == 4)
+            {
                 animator.SetBool("BWalk", true);
-            else if (velo == Vector3.zero)
+                animator.SetTrigger("Trigger");
+            }
+            // 정지
+            else if (command == 5)
             {
                 animator.SetBool("Walk", false);
                 animator.SetBool("BWalk", false);
             }
 
-            
+
             // 커맨드 영역
             if (command == 6)
                 if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
                     frontDash();
+                //else if (animator.GetBool("FrontDash"))
+                  //  animator.SetBool("Run", true);
             if (command == 4)
                 if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
                     backDash();
@@ -189,9 +215,22 @@ public class PlayerController : MonoBehaviour
         else if(status.CurrentState == State.Sitting)
         {
             if (command == 1)
+            {
+                sit();
                 animator.SetBool("BWalk", true);
+            }
             if (command == 3)
+            {
+                sit();
                 animator.SetBool("Walk", true);
+            }
+            if (command == 2)
+                sit();
+            if (command == 5)
+                Idle();
+        }
+        else if(status.CurrentState == State.Attacking)
+        {
             if (command == 2)
                 sit();
             if (command == 5)
@@ -243,6 +282,7 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("Jump", false);
         animator.SetBool("FrontDash", false);
         animator.SetBool("BackDash", false);
+        animator.SetBool("Standing", true);
     }
 
     // 왼손 공격 탐색, 실행
@@ -258,7 +298,7 @@ public class PlayerController : MonoBehaviour
             else if (searchCommands("53") && postCommand == 3)
                 code = 3;
             else
-                code = 1;
+                code = 4; // code 1;
         }
         // 앉은자세
         if(status.CurrentState == State.Sitting)
@@ -271,6 +311,7 @@ public class PlayerController : MonoBehaviour
         {
             // 애니메이션 실행
             animator.SetInteger("LPunch", code);
+            animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -279,6 +320,9 @@ public class PlayerController : MonoBehaviour
 
             // 공격상태로 전환
             status.CurrentState = State.Attacking;
+
+            // 행동중 표시
+            animator.SetBool("Acting", true);
         }
 
         clearCommands();
@@ -295,6 +339,10 @@ public class PlayerController : MonoBehaviour
                 code = 2;
             else if (searchCommands("53") && postCommand == 3)
                 code = 3;
+            else if (searchCommands("523") && postCommand == 3)
+                code = 5;
+            else if (searchCommands("54") && postCommand == 4)
+                code = 6;
             else
                 code = 1;
         }
@@ -308,6 +356,7 @@ public class PlayerController : MonoBehaviour
         {
             // 애니메이션 실행
             animator.SetInteger("RPunch", code);
+            animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -317,6 +366,9 @@ public class PlayerController : MonoBehaviour
 
             // 공격상태로 전환
             status.CurrentState = State.Attacking;
+
+            // 행동중 표시
+            animator.SetBool("Acting", true);
         }
             
         clearCommands();
@@ -331,6 +383,8 @@ public class PlayerController : MonoBehaviour
         {
             if (searchCommands("59") && postCommand == 9)
                 code = 2;
+            else if (searchCommands("656") && postCommand == 6)
+                code = 4;
             else
                 code = 1;
         }
@@ -344,7 +398,8 @@ public class PlayerController : MonoBehaviour
         {
             // 애니메이션 실행
             animator.SetInteger("LKick", code);
-            
+            animator.SetTrigger("Trigger");
+
             // 애니메니터 변수 초기화
             //clearAnimator();
 
@@ -353,6 +408,9 @@ public class PlayerController : MonoBehaviour
 
             // 공격상태로 전환
             status.CurrentState = State.Attacking;
+
+            // 행동중 표시
+            animator.SetBool("Acting", true);
         }
         
         clearCommands();
@@ -367,6 +425,8 @@ public class PlayerController : MonoBehaviour
         {
             if (searchCommands("52") && postCommand == 2)
                 code = 2;
+            else if (searchCommands("53") && postCommand == 3)
+                code = 4;
             else
                 code = 1;
         }
@@ -374,12 +434,15 @@ public class PlayerController : MonoBehaviour
         {
             if (postCommand == 3)
                 code = 3;
+            else if (postCommand == 5)
+                code = 5;
         }
 
         if (code != 0)
         { 
             // 애니메이션 실행
             animator.SetInteger("RKick", code);
+            animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -389,6 +452,9 @@ public class PlayerController : MonoBehaviour
 
             // 공격상태로 전환
             status.CurrentState = State.Attacking;
+
+            // 행동중 표시
+            animator.SetBool("Acting", true);
         }
         
         clearCommands();
@@ -397,8 +463,10 @@ public class PlayerController : MonoBehaviour
     // 앞대시
     void frontDash()
     {
-        //Debug.Log("시간간격 : " + (Time.time - postCommandTime));
         animator.SetBool("FrontDash", true);
+        //animator.SetTrigger("Trigger");
+
+        clearCommands();
     }
 
     // 백대시
@@ -414,6 +482,7 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("Walk", false);
         animator.SetBool("BWalk", false);
 
+        animator.SetBool("Standing", false);
         //status.CurrentState = State.Sitting;
     }
 
@@ -426,6 +495,7 @@ public class PlayerController : MonoBehaviour
     void Idle()
     {
         animator.SetBool("Sit", false);
+        animator.SetBool("Standing", true);
         //status.CurrentState = State.Standing;
     }
 
@@ -448,6 +518,7 @@ public class PlayerController : MonoBehaviour
     {
         animator.SetBool("FrontDash", false);
         animator.SetBool("BackDash", false);
+        animator.SetBool("Trigger", false);
         clearCommands();
     }
 
@@ -456,15 +527,43 @@ public class PlayerController : MonoBehaviour
         status.CurrentState = State.Attacking;
     }
 
+    // 이 함수가 사용된 이후 선입력을 받음
     void AttackEnd()
     {
         animator.SetInteger("LPunch", 0);
         animator.SetInteger("RPunch", 0);
         animator.SetInteger("LKick", 0);
         animator.SetInteger("RKick", 0);
+        animator.SetBool("Blocked", false);
 
         attackInfo = null;
         status.CurrentState = State.Standing;
+        Idle();
+
+        // 행동 끝 표시
+        animator.SetBool("Acting", false);
+
+        // 미완성
+        //animator.SetInteger("TriggerNum", (int)AnimatorTrigger.StandingIdle);
+    }
+
+    void AttackEndCrouch()
+    {
+        animator.SetInteger("LPunch", 0);
+        animator.SetInteger("RPunch", 0);
+        animator.SetInteger("LKick", 0);
+        animator.SetInteger("RKick", 0);
+        animator.SetBool("Blocked", false);
+
+        attackInfo = null;
+        status.CurrentState = State.Sitting;
+        animator.SetBool("Sit", true);
+
+        // 행동 끝 표시
+        animator.SetBool("Acting", false);
+
+        // 미완성
+        //animator.SetInteger("TriggerNum", (int)AnimatorTrigger.CrouchingIdle);
     }
 
     void Hit()
