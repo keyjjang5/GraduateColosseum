@@ -58,6 +58,8 @@ public class PlayerController : MonoBehaviour
     public AttackArea.AttackInfo attackInfo;
     FightManager fightManager;
 
+    TestStateBehaviour stateBehaviour;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -126,6 +128,8 @@ public class PlayerController : MonoBehaviour
             {5, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) }
 
         };
+
+        stateBehaviour = animator.GetBehaviour<TestStateBehaviour>();
     }
 
 
@@ -145,15 +149,12 @@ public class PlayerController : MonoBehaviour
         transform.LookAt(center);
     }
 
-
+    
     private void FixedUpdate()
     {
         // 커맨드
-        float vertical = Input.GetAxisRaw("Vertical");
-        float horizontal = Input.GetAxisRaw("Horizontal");
-
-        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
-        if (postCommand != command)
+        int command = GetCommand();
+        if (IsCommandChange(command))
             commandChange(command);
 
         if (command == 4)
@@ -163,19 +164,118 @@ public class PlayerController : MonoBehaviour
         else
             guard(Guard.NoGuard);
 
+        // 상태에 따른 행동
+        switch(status.CurrentState)
+        {
+            case State.Standing:
+                switch (command)
+                {
+                    case 6:
+                        if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
+                            frontDash();
+                        stateBehaviour.ForwardWalk(animator);
+
+                        break;
+                    case 4:
+                        if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
+                            backDash();
+                        stateBehaviour.BackwardWalk(animator);
+                        break;
+                    case 5:
+                        stateBehaviour.WalkStop(animator);
+                        Idle();
+                        break;
+                    case 1:
+                    case 2:
+                    case 3:
+                        crouch();
+                        break;
+                    case 7:
+                    case 8:
+                    case 9:
+                        jump();
+                        break;
+                }
+                break;
+            case State.Crouching:
+                switch (command)
+                {
+                    case 1:
+                        crouch();
+                        animator.SetBool("BWalk", true);
+                        break;
+                    case 3:
+                        crouch();
+                        animator.SetBool("Walk", true);
+                        break;
+                    case 2:
+                        crouch();
+                        break;
+                    case 5:
+                        Idle();
+                        break;
+                }  
+                break;
+            case State.Attacking:
+                switch (command)
+                {
+                    case 2:
+                        crouch();
+                        break;
+                    case 5:
+                        Idle();
+                        break;
+                }
+                break;
+        }
+    }
+
+    void DummyFixedUpdate()
+    {
+        /*
         if (status.CurrentState == State.Standing)
         {
             // 이동 영역
             Vector3 velo = Vector3.zero;
-            horiVer.TryGetValue(new Vector2(horizontal, vertical), out velo );
+            horiVer.TryGetValue(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")), out velo );
+            velo = Vector3.Lerp(currentVelocity, velo, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
 
             //velocity.x = 1;
             //velocity.z = 1;
             //GetComponent<Rigidbody>().AddForce(velocity);
-            velo = Vector3.Lerp(currentVelocity, velo, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
             //GetComponent<Rigidbody>().MovePosition(transform.position+velo);
             //transform.Translate(velo);
 
+            // Command에 따른 행동
+            switch(command)
+            {
+                case 6:
+                    if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
+                        frontDash();
+                    stateBehaviour.ForwardWalk(animator);
+
+                    break;
+                case 4:
+                    if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
+                        backDash();
+                    stateBehaviour.BackwardWalk(animator);
+                    break;
+                case 5:
+                    stateBehaviour.WalkStop(animator);
+                    Idle();
+                    break;
+                case 1:
+                case 2:
+                case 3:
+                    crouch();
+                    break;
+                case 7:
+                case 8:
+                case 9:
+                    jump();
+                    break;
+            }
+            /* 
             // 전진
             if (command == 6)
             {
@@ -194,7 +294,7 @@ public class PlayerController : MonoBehaviour
                 animator.SetBool("Walk", false);
                 animator.SetBool("BWalk", false);
             }
-
+            
 
             // 커맨드 영역
             if (command == 6)
@@ -206,39 +306,62 @@ public class PlayerController : MonoBehaviour
                 if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
                     backDash();
             if (command == 1 || command == 2 || command == 3)
-                sit();
+                crouch();
             if (command == 7 || command == 8 || command == 9)
                 jump();
             if (command == 5)
                 Idle();
+            
         }
-        else if(status.CurrentState == State.Sitting)
+        else if(status.CurrentState == State.Crouching)
         {
             if (command == 1)
             {
-                sit();
+                crouch();
                 animator.SetBool("BWalk", true);
             }
             if (command == 3)
             {
-                sit();
+                crouch();
                 animator.SetBool("Walk", true);
             }
             if (command == 2)
-                sit();
+                crouch();
             if (command == 5)
                 Idle();
         }
         else if(status.CurrentState == State.Attacking)
         {
             if (command == 2)
-                sit();
+                crouch();
             if (command == 5)
                 Idle();
         }
+    */
     }
 
-    // 커맨드 queue 관리
+    // 커맨드를 얻는 함수
+    public int GetCommand()
+    {
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = Input.GetAxisRaw("Vertical");
+
+        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
+        
+
+        return command;
+    }
+
+    // 커맨드가 직전 커맨드와 바뀌었는지 확인하는 함수
+    public bool IsCommandChange(int command)
+    {
+        if (postCommand != command)
+            return true;
+
+        return false;
+    }
+
+    // 커맨드가 바뀐것을 queue에 추가하고 많이 쌓이면 오래된 것부터 제거 관리
     void commandChange(int i)
     {
         commands.Enqueue(i);
@@ -288,9 +411,22 @@ public class PlayerController : MonoBehaviour
     // 왼손 공격 탐색, 실행
     void activeLP()
     {
-        // 선자세
         int code = 0;
-        Debug.Log("code : " + code);
+        // 상태에 따른 동작
+        switch (status.CurrentState)
+        {
+            case State.Standing:
+                if (searchCommands("56") && postCommand == 6)
+                    code = 2;
+                else if (searchCommands("53") && postCommand == 3)
+                    code = 3;
+                else
+                    code = 4; // code 1;
+                break;
+            case State.Crouching:
+                break;
+        }
+        /*
         if (status.CurrentState == State.Standing)
         {
             if (searchCommands("56") && postCommand == 6)
@@ -301,11 +437,11 @@ public class PlayerController : MonoBehaviour
                 code = 4; // code 1;
         }
         // 앉은자세
-        if(status.CurrentState == State.Sitting)
+        if(status.CurrentState == State.Crouching)
         {
             
         }
-
+        */
         // attackInfo저장
         if (code != 0)
         {
@@ -331,8 +467,28 @@ public class PlayerController : MonoBehaviour
     // 오른손 공격 탐색, 실행
     void activeRP()
     {
-        // 선자세
         int code = 0;
+        // 상태에 따른 동작
+        switch (status.CurrentState)
+        {
+            case State.Standing:
+                if (searchCommands("56") && postCommand == 6)
+                    code = 2;
+                else if (searchCommands("53") && postCommand == 3)
+                    code = 3;
+                else if (searchCommands("523") && postCommand == 3)
+                    code = 5;
+                else if (searchCommands("54") && postCommand == 4)
+                    code = 6;
+                else
+                    code = 1;
+                break;
+            case State.Crouching:
+                if (postCommand == 5)
+                    code = 4;
+                break;
+        }
+        /*
         if (status.CurrentState == State.Standing)
         {
             if (searchCommands("56") && postCommand == 6)
@@ -346,12 +502,12 @@ public class PlayerController : MonoBehaviour
             else
                 code = 1;
         }
-        if(status.CurrentState == State.Sitting)
+        if(status.CurrentState == State.Crouching)
         {
             if (postCommand == 5)
                 code = 4;
         }
-
+        */
         if (code != 0)
         {
             // 애니메이션 실행
@@ -379,6 +535,23 @@ public class PlayerController : MonoBehaviour
     {
         // 선자세
         int code = 0;
+        // 상태에 따른 동작
+        switch (status.CurrentState)
+        {
+            case State.Standing:
+                if (searchCommands("59") && postCommand == 9)
+                    code = 2;
+                else if (searchCommands("656") && postCommand == 6)
+                    code = 4;
+                else
+                    code = 1;
+                break;
+            case State.Crouching:
+                if (postCommand == 2)
+                    code = 3;
+                break;
+        }
+        /*
         if (status.CurrentState == State.Standing)
         {
             if (searchCommands("59") && postCommand == 9)
@@ -388,12 +561,12 @@ public class PlayerController : MonoBehaviour
             else
                 code = 1;
         }
-        if (status.CurrentState == State.Sitting)
+        if (status.CurrentState == State.Crouching)
         {
             if (postCommand == 2)
                 code = 3;
         }
-
+        */
         if (code != 0)
         {
             // 애니메이션 실행
@@ -421,6 +594,25 @@ public class PlayerController : MonoBehaviour
     {
         // 선자세
         int code = 0;
+        // 상태에 따른 동작
+        switch (status.CurrentState)
+        {
+            case State.Standing:
+                if (searchCommands("52") && postCommand == 2)
+                    code = 2;
+                else if (searchCommands("53") && postCommand == 3)
+                    code = 4;
+                else
+                    code = 1;
+                break;
+            case State.Crouching:
+                if (postCommand == 3)
+                    code = 3;
+                else if (postCommand == 5)
+                    code = 5;
+                break;
+        }
+        /*
         if (status.CurrentState == State.Standing)
         {
             if (searchCommands("52") && postCommand == 2)
@@ -430,14 +622,14 @@ public class PlayerController : MonoBehaviour
             else
                 code = 1;
         }
-        if (status.CurrentState == State.Sitting)
+        if (status.CurrentState == State.Crouching)
         {
             if (postCommand == 3)
                 code = 3;
             else if (postCommand == 5)
                 code = 5;
         }
-
+        */
         if (code != 0)
         { 
             // 애니메이션 실행
@@ -476,7 +668,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // 앉기
-    void sit()
+    void crouch()
     {
         animator.SetBool("Sit", true);
         animator.SetBool("Walk", false);
@@ -488,7 +680,7 @@ public class PlayerController : MonoBehaviour
 
     void Crouching()
     {
-        status.CurrentState = State.Sitting;
+        status.CurrentState = State.Crouching;
     }
 
     // 기본상태
@@ -556,7 +748,7 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("Blocked", false);
 
         attackInfo = null;
-        status.CurrentState = State.Sitting;
+        status.CurrentState = State.Crouching;
         animator.SetBool("Sit", true);
 
         // 행동 끝 표시

@@ -15,6 +15,8 @@ public class Status : MonoBehaviour
     Guard guard;
     public Guard Guard { get { return guard; } set { guard = value; } }
 
+    public HitState HitState;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -22,6 +24,7 @@ public class Status : MonoBehaviour
         hp = maxHp;
         currentState = State.Standing;
         guard = Guard.Stand;
+        HitState = HitState.NoHit;
     }
 
     // Update is called once per frame

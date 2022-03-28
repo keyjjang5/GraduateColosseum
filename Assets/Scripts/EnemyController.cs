@@ -23,9 +23,9 @@ public class EnemyController : MonoBehaviour
 
         manager = GameObject.Find("Manager");
 
-        HitEvent.AddListener(() => status.CurrentState = State.Hited);
-
-      
+        //HitEvent.AddListener(() => status.CurrentState = State.Hitted);
+        HitEvent.AddListener(() => status.HitState = HitState.Hit);
+        HitEvent.AddListener(() => isHit = true);
     }
 
     // Update is called once per frame
@@ -48,40 +48,31 @@ public class EnemyController : MonoBehaviour
         if (isHit)
             return;
 
-        //Debug.Log("hit");
-
-        if (attackInfo.attackType == AttackArea.AttackType.upper)
+        switch(attackInfo.attackType)
         {
-            //Debug.Log("in uppper");
-            if (status.CurrentState == State.Sitting)
-                return;
-            if (status.Guard == Guard.Stand)
-            {
-                //Debug.Log("upper guard");
-                standingGuard(attackInfo);
-                return;
-            }
-            //Debug.Log("upper");
-        }
-        else if(attackInfo.attackType == AttackArea.AttackType.middle)
-        {
-            if (status.Guard == Guard.Stand)
-            {
-                //Debug.Log("middle guard");
-                standingGuard(attackInfo);
-                return;
-            }
-            //Debug.Log("middle");
-        }
-        else if(attackInfo.attackType == AttackArea.AttackType.lower)
-        {
-            if (status.Guard == Guard.Crouch)
-            {
-                //Debug.Log("lower guard");
-                crouchGuard(attackInfo);
-                return;
-            }
-            //Debug.Log("lower");
+            case AttackArea.AttackType.upper:
+                if (status.CurrentState == State.Crouching)
+                    return;
+                if (status.Guard == Guard.Stand)
+                {
+                    standingGuard(attackInfo);
+                    return;
+                }
+                break;
+            case AttackArea.AttackType.middle:
+                if (status.Guard == Guard.Stand)
+                {
+                    standingGuard(attackInfo);
+                    return;
+                }
+                break;
+            case AttackArea.AttackType.lower:
+                if (status.Guard == Guard.Crouch)
+                {
+                    crouchGuard(attackInfo);
+                    return;
+                }
+                break;
         }
 
         Debug.Log("Hited");
@@ -117,7 +108,7 @@ public class EnemyController : MonoBehaviour
         animator.SetBool("Walk", false);
         animator.SetBool("BWalk", false);
 
-        status.CurrentState = State.Sitting;
+        status.CurrentState = State.Crouching;
     }
 
     void standingGuard(AttackArea.AttackInfo attackInfo)
@@ -144,6 +135,6 @@ public class EnemyController : MonoBehaviour
 
     void Crouching()
     {
-        status.CurrentState = State.Sitting;
+        status.CurrentState = State.Crouching;
     }
 }

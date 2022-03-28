@@ -10,11 +10,11 @@ namespace Colosseum
         // 선자세
         Standing,
         // 앉은자세
-        Sitting,
+        Crouching,
         // 공격 중
-        Attacking,
+        Attacking
         // 맞는 중
-        Hited
+        //Hitted
     }
 
     // 가드 상태
@@ -26,6 +26,14 @@ namespace Colosseum
         Stand,
         // 앉은자세 가드
         Crouch
+    }
+
+    // 히트 상태
+    public enum HitState 
+    {
+        NoHit,
+        Hit, 
+        CounterHit
     }
 
     // Trigger Number
