@@ -34,7 +34,7 @@ public class EnemyController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Keypad5))
         {
             sit();
-            status.Guard = Guard.Crouch;
+            status.Guard = GuardState.Crouch;
         }
         else
         {   // юс╫ц
@@ -53,21 +53,21 @@ public class EnemyController : MonoBehaviour
             case AttackArea.AttackType.upper:
                 if (status.CurrentState == State.Crouching)
                     return;
-                if (status.Guard == Guard.Stand)
+                if (status.Guard == GuardState.Stand)
                 {
                     standingGuard(attackInfo);
                     return;
                 }
                 break;
             case AttackArea.AttackType.middle:
-                if (status.Guard == Guard.Stand)
+                if (status.Guard == GuardState.Stand)
                 {
                     standingGuard(attackInfo);
                     return;
                 }
                 break;
             case AttackArea.AttackType.lower:
-                if (status.Guard == Guard.Crouch)
+                if (status.Guard == GuardState.Crouch)
                 {
                     crouchGuard(attackInfo);
                     return;

@@ -12,8 +12,8 @@ public class Status : MonoBehaviour
     public State currentState;
     public State CurrentState { get { return currentState; } set { currentState = value; } }
 
-    Guard guard;
-    public Guard Guard { get { return guard; } set { guard = value; } }
+    GuardState guard;
+    public GuardState Guard { get { return guard; } set { guard = value; } }
 
     public HitState HitState;
 
@@ -23,7 +23,7 @@ public class Status : MonoBehaviour
         maxHp = 100;
         hp = maxHp;
         currentState = State.Standing;
-        guard = Guard.Stand;
+        guard = GuardState.Stand;
         HitState = HitState.NoHit;
     }
 

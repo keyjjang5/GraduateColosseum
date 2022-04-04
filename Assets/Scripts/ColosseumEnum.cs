@@ -18,7 +18,7 @@ namespace Colosseum
     }
 
     // 가드 상태
-    public enum Guard
+    public enum GuardState
     {
         // 가드안함
         NoGuard,
@@ -41,5 +41,19 @@ namespace Colosseum
     {
         StandingIdle = 1,
         CrouchingIdle = 11
+    }
+
+    // 커맨드 가시화
+    public enum Command
+    {
+        SW = 1,
+        S = 2,
+        SE = 3,
+        W = 4,
+        Neutral = 5,
+        E = 6,
+        NW = 7,
+        N = 8,
+        NE = 9
     }
 }

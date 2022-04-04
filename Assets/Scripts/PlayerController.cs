@@ -48,6 +48,31 @@ public class PlayerController : MonoBehaviour
             {new Vector2(1, 0), 6 },
             {new Vector2(1, 1), 9 }
         };
+    Dictionary<int, Command> intToCommand = new Dictionary<int, Command>
+    {
+        {1, Command.SW },
+        {2, Command.S },
+        {3, Command.SE },
+        {4, Command.W },
+        {5, Command.Neutral },
+        {6, Command.E },
+        {7, Command.NW },
+        {8, Command.N },
+        {9, Command.NE }
+    };
+    Dictionary<Command, int> commandToInt = new Dictionary<Command, int>
+    {
+        {Command.SW, 1},
+        {Command.S, 2},
+        {Command.SE, 3},
+        {Command.W, 4},
+        {Command.Neutral, 5},
+        {Command.E, 6},
+        {Command.NW, 7},
+        {Command.N, 8},
+        {Command.NE, 9}
+    };
+
     [SerializeField]
     Dictionary<int, AttackArea.AttackInfo> attackInfoDictLP;
     Dictionary<int, AttackArea.AttackInfo> attackInfoDictRP;
@@ -72,7 +97,6 @@ public class PlayerController : MonoBehaviour
         status.CurrentState = State.Standing;
 
         attackInfo = new AttackArea.AttackInfo();
-        attackInfo.Init();
 
         fightManager = FindObjectOfType<FightManager>();
 
@@ -153,81 +177,15 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         // 커맨드
-        int command = GetCommand();
+        Command command = GetCurrentCommand();
         if (IsCommandChange(command))
-            commandChange(command);
+            addCommand(command);
 
-        if (command == 4)
-            guard(Guard.Stand);
-        else if (command == 1)
-            guard(Guard.Crouch);
-        else
-            guard(Guard.NoGuard);
+        // 커맨드에 따른 가드 상태 변화
+        guardStateBasedOnCommand(command);
 
-        // 상태에 따른 행동
-        switch(status.CurrentState)
-        {
-            case State.Standing:
-                switch (command)
-                {
-                    case 6:
-                        if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
-                            frontDash();
-                        stateBehaviour.ForwardWalk(animator);
-
-                        break;
-                    case 4:
-                        if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
-                            backDash();
-                        stateBehaviour.BackwardWalk(animator);
-                        break;
-                    case 5:
-                        stateBehaviour.WalkStop(animator);
-                        Idle();
-                        break;
-                    case 1:
-                    case 2:
-                    case 3:
-                        crouch();
-                        break;
-                    case 7:
-                    case 8:
-                    case 9:
-                        jump();
-                        break;
-                }
-                break;
-            case State.Crouching:
-                switch (command)
-                {
-                    case 1:
-                        crouch();
-                        animator.SetBool("BWalk", true);
-                        break;
-                    case 3:
-                        crouch();
-                        animator.SetBool("Walk", true);
-                        break;
-                    case 2:
-                        crouch();
-                        break;
-                    case 5:
-                        Idle();
-                        break;
-                }  
-                break;
-            case State.Attacking:
-                switch (command)
-                {
-                    case 2:
-                        crouch();
-                        break;
-                    case 5:
-                        Idle();
-                        break;
-                }
-                break;
-        }
+        // 상태와 커맨드에 따른 행동
+        actionBasedOnState(command);
     }
 
     void DummyFixedUpdate()
@@ -341,33 +299,36 @@ public class PlayerController : MonoBehaviour
     }
 
     // 커맨드를 얻는 함수
-    public int GetCommand()
+    public Command GetCurrentCommand()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
-        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
-        
+        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int numPadCommand);
+        intToCommand.TryGetValue(numPadCommand, out Command command);
 
         return command;
     }
 
     // 커맨드가 직전 커맨드와 바뀌었는지 확인하는 함수
-    public bool IsCommandChange(int command)
+    public bool IsCommandChange(Command command)
     {
-        if (postCommand != command)
+        commandToInt.TryGetValue(command, out int numPadCommand);
+        if (postCommand != numPadCommand)
             return true;
 
         return false;
     }
 
     // 커맨드가 바뀐것을 queue에 추가하고 많이 쌓이면 오래된 것부터 제거 관리
-    void commandChange(int i)
+    void addCommand(Command command)
     {
-        commands.Enqueue(i);
+        commandToInt.TryGetValue(command, out int numPadCommand);
+
+        commands.Enqueue(numPadCommand);
         if (commands.Count > 4)
             commands.Dequeue();
-        postCommand = i;
+        postCommand = numPadCommand;
         postCommandTime = currentCommandTime;
         currentCommandTime = Time.time;
 
@@ -772,8 +733,84 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    void guard(Guard guard)
+    void guard(GuardState guard)
     {
         status.Guard = guard;
+    }
+
+    void actionBasedOnState(Command command)
+    {
+        switch (status.CurrentState)
+        {
+            case State.Standing:
+                switch (command)
+                {
+                    case Command.E:
+                        if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
+                            frontDash();
+                        stateBehaviour.ForwardWalk(animator);
+                        break;
+                    case Command.W:
+                        if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
+                            backDash();
+                        stateBehaviour.BackwardWalk(animator);
+                        break;
+                    case Command.Neutral:
+                        stateBehaviour.WalkStop(animator);
+                        Idle();
+                        break;
+                    case Command.SW:
+                    case Command.S:
+                    case Command.SE:
+                        crouch();
+                        break;
+                    case Command.NW:
+                    case Command.N:
+                    case Command.NE:
+                        jump();
+                        break;
+                }
+                break;
+            case State.Crouching:
+                switch (command)
+                {
+                    case Command.SW:
+                        crouch();
+                        animator.SetBool("BWalk", true);
+                        break;
+                    case Command.SE:
+                        crouch();
+                        animator.SetBool("Walk", true);
+                        break;
+                    case Command.S:
+                        crouch();
+                        break;
+                    case Command.Neutral:
+                        Idle();
+                        break;
+                }
+                break;
+            case State.Attacking:
+                switch (command)
+                {
+                    case Command.S:
+                        crouch();
+                        break;
+                    case Command.Neutral:
+                        Idle();
+                        break;
+                }
+                break;
+        }
+    }
+
+    void guardStateBasedOnCommand(Command command)
+    {
+        if (command == Command.W)
+            guard(GuardState.Stand);
+        else if (command == Command.SW)
+            guard(GuardState.Crouch);
+        else
+            guard(GuardState.NoGuard);
     }
 }
