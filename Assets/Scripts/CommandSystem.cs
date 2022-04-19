@@ -16,6 +16,56 @@ public class CommandSystem : MonoBehaviour
     int postCommand = 0;
     float postCommandTime = 0;
     float currentCommandTime = 0;
+    List<KeyCode> inputs = new List<KeyCode>();
+
+    // 전달하기 위한 클래스
+    public class Command
+    {
+        Queue<int> commands;
+        public Queue<int> Commands { get { return commands; } }
+        List<KeyCode> inputs;
+        public List<KeyCode> Inputs { get { return inputs; } }
+        int postCommand;
+        public int PostCommand { get { return postCommand; } }
+        int currentCommand;
+        public int CurrentCommand { get { return currentCommand; } }
+        float postCommandTime;
+        public float PostCommandTime { get { return postCommandTime; } }
+        float currentCommandTime;
+        public float CurrentCommandTime { get { return currentCommandTime; } }
+        KeyCode activeCode;
+        public KeyCode ActiveCode { get { return activeCode; } }
+
+        public Command()
+        {
+            commands = new Queue<int>();
+            inputs = new List<KeyCode>();
+            postCommand = 0;
+            currentCommand = 0;
+            postCommandTime = 0;
+            currentCommandTime = 0;
+            activeCode = 0;
+        }
+
+        public void Update(Queue<int> commands, List<KeyCode> inputs, int postCommand, int currentCommand, float postCommandTime, float currentCommandTime, KeyCode input)
+        {
+            this.commands = commands;
+            this.inputs = inputs;
+            this.postCommand = postCommand;
+            this.postCommandTime = postCommandTime;
+            this.currentCommand = currentCommand;
+            this.currentCommandTime = currentCommandTime;
+            this.activeCode = input;
+        }
+
+        public void Clear()
+        {
+            commands.Clear();
+            inputs.Clear();
+        }
+    }
+    Command command;
+
     Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
         {
             {new Vector2(-1, -1), 1 },
@@ -48,32 +98,28 @@ public class CommandSystem : MonoBehaviour
         {KeyCode.I, 'w' },
         {KeyCode.J, 'e' },
         {KeyCode.K, 'r' },
-        {KeyCode.T, 'T' }
+        {KeyCode.T, 'T' },
+        {KeyCode.A, 'a' },
+        {KeyCode.S, 's' },
+        {KeyCode.D, 'd' },
+        {KeyCode.Z, 'A' },
+        {KeyCode.X, 'S' },
+        {KeyCode.C, 'D' },
+        {KeyCode.Alpha1, 'Q' },
+        {KeyCode.Alpha2, 'W' },
+        {KeyCode.Alpha3, 'E' },
+        {KeyCode.Alpha4, 'R' },
+        {KeyCode.Alpha5, 't' }
     };
-    Dictionary<int, Command> intToCommand = new Dictionary<int, Command>
+
+    List<KeyCode> inputTypes = new List<KeyCode>()
     {
-        {1, Command.SW },
-        {2, Command.S },
-        {3, Command.SE },
-        {4, Command.W },
-        {5, Command.Neutral },
-        {6, Command.E },
-        {7, Command.NW },
-        {8, Command.N },
-        {9, Command.NE }
+        KeyCode.U,
+        KeyCode.I,
+        KeyCode.J,
+        KeyCode.K
     };
-    Dictionary<Command, int> commandToInt = new Dictionary<Command, int>
-    {
-        {Command.SW, 1},
-        {Command.S, 2},
-        {Command.SE, 3},
-        {Command.W, 4},
-        {Command.Neutral, 5},
-        {Command.E, 6},
-        {Command.NW, 7},
-        {Command.N, 8},
-        {Command.NE, 9}
-    };
+
 
     Text arrow;
     Text button;
@@ -88,33 +134,60 @@ public class CommandSystem : MonoBehaviour
 
         string fileName = DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
         sw = OpenTextFile(fileName + ".txt");
+
+        command = new Command();
     }
 
     // Update is called once per frame
     void Update()
     {
-        Command command = GetCurrentCommand();
-        // 키보드 입력
-        if (Input.GetKeyDown(KeyCode.U))
-            commandView(command, KeyCode.U);
-        else if (Input.GetKeyDown(KeyCode.I))
-            commandView(command, KeyCode.I);
-        else if (Input.GetKeyDown(KeyCode.J))
-            commandView(command, KeyCode.J);
-        else if (Input.GetKeyDown(KeyCode.K))
-            commandView(command, KeyCode.K);
+        //int command = GetCurrentCommand();
+        //// 키보드 입력
+        //if (Input.GetKeyDown(KeyCode.U))
+        //    commandView(command, KeyCode.U);
+        //else if (Input.GetKeyDown(KeyCode.I))
+        //    commandView(command, KeyCode.I);
+        //else if (Input.GetKeyDown(KeyCode.J))
+        //    commandView(command, KeyCode.J);
+        //else if (Input.GetKeyDown(KeyCode.K))
+        //    commandView(command, KeyCode.K);
     }
 
     private void FixedUpdate()
     {
-        Command command = GetCurrentCommand();
-        if (IsCommandChange(command))
+        // 지난 입력을 초기화한다.
+        inputs.Clear();
+
+        int currentCommand = GetCurrentCommand();
+
+        if (Input.anyKeyDown)
         {
-            commandChange(command);
-            commandView(command, KeyCode.T);
+            // 내가 사용 하는 키에 입력이 들어왔다면 추가한다.
+            foreach (var code in inputTypes)
+            {
+                if (Input.GetKeyDown(code))
+                    inputs.Add(code);
+            }
+            // 임시로 여기에 만들어 놓음, 어떻게 놓을지 고민 필요
+            commandView(currentCommand, inputs);
         }
 
-        writeLog(sw, command, postCommandTime);
+        AddArrowCommand(commands, currentCommand);
+
+        command.Update(commands, inputs, postCommand, currentCommand, postCommandTime, currentCommandTime, inputsToActiveCode(inputs));
+
+        writeLog(sw, currentCommand, postCommandTime);
+    }
+
+    void AddArrowCommand(Queue<int> commands, int currentCommand)
+    {
+        // queue에 커맨드 추가
+        // 추가하는 과정에서 실제 큐에 추가할지를 확인
+        if (postCommand != currentCommand)
+        {
+            commandChange(currentCommand);
+            //commandView(currentCommand, KeyCode.T);
+        }
     }
 
     private void OnDestroy()
@@ -122,53 +195,39 @@ public class CommandSystem : MonoBehaviour
         CloseTextFile(sw);
     }
 
-    public Command GetCurrentCommand()
+    public int GetCurrentCommand()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
-        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int numPadCommand);
-        intToCommand.TryGetValue(numPadCommand, out Command command);
+        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
 
         return command;
     }
 
-    bool IsCommandChange(Command command)
+    bool IsCommandChange(CommandEnum command)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
-        if (postCommand != numPadCommand)
+        if (postCommand != (int)command)
             return true;
         return false;
     }
 
     // 커맨드 queue 관리
-    void commandChange(Command command)
+    void commandChange(int command)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
+        commands.Enqueue(command);
 
-        commands.Enqueue(numPadCommand);
         if (commands.Count > 4)
             commands.Dequeue();
-        postCommand = numPadCommand;
+        
+        postCommand = command;
         postCommandTime = currentCommandTime;
         currentCommandTime = Time.time;
 
         string s = null;
         foreach (int j in commands)
             s += j;
-        Debug.Log("commands : :" + s);
-    }
-
-    // 커맨드 찾기
-    bool searchCommands(string command)
-    {
-        string s = null;
-        foreach (int i in commands)
-            s += i;
-        bool b = s.Contains(command);
-        //Debug.Log(command + "는 : " + b);
-
-        return b;
+        //Debug.Log("commands : :" + s);
     }
 
     // commandView(int command, KeyCode keyCode)사용
@@ -188,20 +247,173 @@ public class CommandSystem : MonoBehaviour
         button.text = button.text + c;
     }
 
-    public void commandView(Command command, KeyCode keyCode)
+    public void commandView(int command, KeyCode keyCode)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
-
-        commandView(numPadCommand);
+        commandView(command);
         commandView(keyCode);
     }
 
+    public void commandView(int command, List<KeyCode> inputs)
+    {
+        
+        commandView(command);
+
+        KeyCode code = inputsToActiveCode(inputs);
+
+        commandView(code);
+    }
+
+    public KeyCode inputsToActiveCode(List<KeyCode> inputs)
+    {
+        KeyCode code = KeyCode.T;
+        int num = 0;
+        foreach (KeyCode input in inputs)
+        {
+            if (input == KeyCode.U || input == KeyCode.I || input == KeyCode.J || input == KeyCode.K)
+            {
+                int i = 0;
+                switch (input)
+                {
+                    case KeyCode.U:
+                        i = 1;
+                        break;
+                    case KeyCode.I:
+                        i = 2;
+                        break;
+                    case KeyCode.J:
+                        i = 3;
+                        break;
+                    case KeyCode.K:
+                        i = 4;
+                        break;
+                }
+                num = num * 10 + i;
+            }
+        }
+        switch (num)
+        {
+            case 1:
+                code = KeyCode.U;
+                break;
+            case 2:
+                code = KeyCode.I;
+                break;
+            case 3:
+                code = KeyCode.J;
+                break;
+            case 4:
+                code = KeyCode.K;
+                break;
+            case 12:
+            case 21:
+                code = KeyCode.A;
+                break;
+            case 13:
+            case 31:
+                code = KeyCode.S;
+                break;
+            case 14:
+            case 41:
+                code = KeyCode.D;
+                break;
+            case 23:
+            case 32:
+                code = KeyCode.C;
+                break;
+            case 24:
+            case 42:
+                code = KeyCode.X;
+                break;
+            case 34:
+            case 43:
+                code = KeyCode.Z;
+                break;
+            case 123:
+            case 132:
+            case 213:
+            case 231:
+            case 312:
+            case 321:
+                code = KeyCode.Alpha4;
+                break;
+            case 124:
+            case 142:
+            case 214:
+            case 241:
+            case 412:
+            case 421:
+                code = KeyCode.Alpha3;
+                break;
+            case 134:
+            case 143:
+            case 314:
+            case 341:
+            case 413:
+            case 431:
+                code = KeyCode.Alpha2;
+                break;
+            case 234:
+            case 243:
+            case 324:
+            case 342:
+            case 423:
+            case 432:
+                code = KeyCode.Alpha1;
+                break;
+            case 1234:
+            case 1243:
+            case 1324:
+            case 1342:
+            case 1423:
+            case 1432:
+
+            case 2134:
+            case 2143:
+            case 2314:
+            case 2341:
+            case 2413:
+            case 2431:
+
+            case 3124:
+            case 3142:
+            case 3214:
+            case 3241:
+            case 3412:
+            case 3421:
+
+            case 4123:
+            case 4132:
+            case 4213:
+            case 4231:
+            case 4312:
+            case 4321:
+                code = KeyCode.Alpha5;
+                break;
+        }
+
+        return code;
+    }
+
+    public Queue<int> GetCommands()
+    {
+        return commands;
+    }
+
+    public List<KeyCode> GetInputs()
+    {
+        return inputs;
+    }
+
+    public Command GetCommand()
+    {
+        return command;
+    }
+
+    // 로그 작성 관련함수
     StreamWriter OpenTextFile(string fileName)
     {
         // 파일을 연다.
         string path = "Assets/Log/" + fileName;
-
-        Debug.Log(path);
 
         StreamWriter sw = null;
         if (!File.Exists(path))
@@ -235,13 +447,14 @@ public class CommandSystem : MonoBehaviour
         sw.Flush();
         sw.Close();
     }
+
     // 로그를 남긴다.
     // 입력된 커맨드와 커맨드 입력 간격이 필요함
-    void writeLog(StreamWriter sw, Command command, float postCommandTime)
+    void writeLog(StreamWriter sw, int command, float postCommandTime)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
-        sw.WriteLine(numPadCommand + " " + postCommandTime + " " + Time.time);
+        sw.WriteLine(command + " " + postCommandTime + " " + Time.time);
         // 파일에 현재 커맨드와 직전 커맨드 시간, 현재 커맨드 시간을 기록한다.
         // 리플레이 시스템에서 해당 로그를 읽고 행동으로 전환하여 보여준다.
     }
+    // 여기까지 로그 작성 관련
 }

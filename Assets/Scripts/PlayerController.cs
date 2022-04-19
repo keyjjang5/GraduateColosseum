@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System;
 
 using Colosseum;
 
@@ -48,30 +49,6 @@ public class PlayerController : MonoBehaviour
             {new Vector2(1, 0), 6 },
             {new Vector2(1, 1), 9 }
         };
-    Dictionary<int, Command> intToCommand = new Dictionary<int, Command>
-    {
-        {1, Command.SW },
-        {2, Command.S },
-        {3, Command.SE },
-        {4, Command.W },
-        {5, Command.Neutral },
-        {6, Command.E },
-        {7, Command.NW },
-        {8, Command.N },
-        {9, Command.NE }
-    };
-    Dictionary<Command, int> commandToInt = new Dictionary<Command, int>
-    {
-        {Command.SW, 1},
-        {Command.S, 2},
-        {Command.SE, 3},
-        {Command.W, 4},
-        {Command.Neutral, 5},
-        {Command.E, 6},
-        {Command.NW, 7},
-        {Command.N, 8},
-        {Command.NE, 9}
-    };
 
     [SerializeField]
     Dictionary<int, AttackArea.AttackInfo> attackInfoDictLP;
@@ -85,6 +62,7 @@ public class PlayerController : MonoBehaviour
 
     TestStateBehaviour stateBehaviour;
 
+    CommandSystem commandSystem;
     // Start is called before the first frame update
     void Start()
     {
@@ -154,38 +132,30 @@ public class PlayerController : MonoBehaviour
         };
 
         stateBehaviour = animator.GetBehaviour<TestStateBehaviour>();
+
+        commandSystem = FindObjectOfType<CommandSystem>();
     }
 
 
     // Update is called once per frame
     void Update()
     {
-        // 액션 실행
-        if (Input.GetKeyDown(KeyCode.U))
-            activeLP();
-        else if (Input.GetKeyDown(KeyCode.I))
-            activeRP();
-        else if (Input.GetKeyDown(KeyCode.J))
-            activeLK();
-        else if (Input.GetKeyDown(KeyCode.K))
-            activeRK();
-
-        transform.LookAt(center);
     }
 
     
     private void FixedUpdate()
     {
-        // 커맨드
-        Command command = GetCurrentCommand();
-        if (IsCommandChange(command))
-            addCommand(command);
+        transform.LookAt(center);
+
+        var command = commandSystem.GetCommand();
 
         // 커맨드에 따른 가드 상태 변화
-        guardStateBasedOnCommand(command);
+        guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
 
         // 상태와 커맨드에 따른 행동
-        actionBasedOnState(command);
+        actionBasedOnState((CommandEnum)command.CurrentCommand, command.Commands);
+
+        PlayAction(command.Commands, command.ActiveCode);
     }
 
     void DummyFixedUpdate()
@@ -299,36 +269,32 @@ public class PlayerController : MonoBehaviour
     }
 
     // 커맨드를 얻는 함수
-    public Command GetCurrentCommand()
+    public int GetCurrentCommand()
     {
         float horizontal = Input.GetAxisRaw("Horizontal");
         float vertical = Input.GetAxisRaw("Vertical");
 
-        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int numPadCommand);
-        intToCommand.TryGetValue(numPadCommand, out Command command);
+        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
 
         return command;
     }
 
     // 커맨드가 직전 커맨드와 바뀌었는지 확인하는 함수
-    public bool IsCommandChange(Command command)
+    public bool IsCommandChange(CommandEnum command)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
-        if (postCommand != numPadCommand)
+        if (postCommand != (int)command)
             return true;
 
         return false;
     }
 
     // 커맨드가 바뀐것을 queue에 추가하고 많이 쌓이면 오래된 것부터 제거 관리
-    void addCommand(Command command)
+    void addCommand(int command)
     {
-        commandToInt.TryGetValue(command, out int numPadCommand);
-
-        commands.Enqueue(numPadCommand);
+        commands.Enqueue(command);
         if (commands.Count > 4)
             commands.Dequeue();
-        postCommand = numPadCommand;
+        postCommand = command;
         postCommandTime = currentCommandTime;
         currentCommandTime = Time.time;
 
@@ -339,7 +305,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // 커맨드 찾기
-    bool searchCommands(string command) 
+    bool searchCommands(Queue<int> commands, string command) 
     {
         string s = null;
         foreach (int i in commands)
@@ -369,17 +335,61 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("Standing", true);
     }
 
+    //public class Action
+    //{
+    //    public Action() { Debug.Log("부모클래스 생성자"); }
+    //    ~Action() { Debug.Log("부모클래스 소멸자"); }
+    //    public virtual void excute() { }
+    //}
+    //public class LPAction : Action
+    //{
+    //    public LPAction() { Debug.Log("자식클래스 생성자"); }
+    //    ~LPAction() { Debug.Log("자식클래스 소멸자"); }
+    //    public override void excute() { }
+    //}
+    //public class RPAction : Action
+    //{
+    //    public RPAction() { Debug.Log("자식클래스 생성자"); }
+    //    ~RPAction() { Debug.Log("자식클래스 소멸자"); }
+    //}
+    //public class LKAction : Action
+    //{
+    //    public LKAction() { Debug.Log("자식클래스 생성자"); }
+    //    ~LKAction() { Debug.Log("자식클래스 소멸자"); }
+    //}
+    //public class RKAction : Action
+    //{
+    //    public RKAction() { Debug.Log("자식클래스 생성자"); }
+    //    ~RKAction() { Debug.Log("자식클래스 소멸자"); }
+    //}
+
+    void PlayAction(Queue<int>commands, KeyCode code)
+    {
+        //Action lpAction = new LPAction();
+        //Action rpAction = new RPAction();
+        //Action lkAction = new LKAction();
+        //Action rkAction = new RKAction();
+
+        if (code == KeyCode.U)
+            activeLP(commands);
+        else if (code == KeyCode.I)
+            activeRP(commands);
+        else if (code == KeyCode.J)
+            activeLK(commands);
+        else if (code == KeyCode.K)
+            activeRK(commands);
+    }
     // 왼손 공격 탐색, 실행
-    void activeLP()
+    void activeLP(Queue<int> commands)
     {
         int code = 0;
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands("56") && postCommand == 6)
+                if (searchCommands(commands, "56") && postCommand == 6)
                     code = 2;
-                else if (searchCommands("53") && postCommand == 3)
+                else if (searchCommands(commands, "53") && postCommand == 3)
                     code = 3;
                 else
                     code = 4; // code 1;
@@ -426,20 +436,20 @@ public class PlayerController : MonoBehaviour
     }
 
     // 오른손 공격 탐색, 실행
-    void activeRP()
+    void activeRP(Queue<int> commands)
     {
         int code = 0;
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands("56") && postCommand == 6)
+                if (searchCommands(commands, "56") && postCommand == 6)
                     code = 2;
-                else if (searchCommands("53") && postCommand == 3)
+                else if (searchCommands(commands, "53") && postCommand == 3)
                     code = 3;
-                else if (searchCommands("523") && postCommand == 3)
+                else if (searchCommands(commands, "523") && postCommand == 3)
                     code = 5;
-                else if (searchCommands("54") && postCommand == 4)
+                else if (searchCommands(commands, "54") && postCommand == 4)
                     code = 6;
                 else
                     code = 1;
@@ -492,7 +502,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // 왼발 공격 탐색, 실행
-    void activeLK()
+    void activeLK(Queue<int> commands)
     {
         // 선자세
         int code = 0;
@@ -500,9 +510,9 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands("59") && postCommand == 9)
+                if (searchCommands(commands, "59") && postCommand == 9)
                     code = 2;
-                else if (searchCommands("656") && postCommand == 6)
+                else if (searchCommands(commands, "656") && postCommand == 6)
                     code = 4;
                 else
                     code = 1;
@@ -551,7 +561,7 @@ public class PlayerController : MonoBehaviour
     }
 
     // 오른발 공격 탐색, 실행
-    void activeRK()
+    void activeRK(Queue<int> commands)
     {
         // 선자세
         int code = 0;
@@ -559,9 +569,9 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands("52") && postCommand == 2)
+                if (searchCommands(commands, "52") && postCommand == 2)
                     code = 2;
-                else if (searchCommands("53") && postCommand == 3)
+                else if (searchCommands(commands, "53") && postCommand == 3)
                     code = 4;
                 else
                     code = 1;
@@ -738,35 +748,35 @@ public class PlayerController : MonoBehaviour
         status.Guard = guard;
     }
 
-    void actionBasedOnState(Command command)
+    void actionBasedOnState(CommandEnum command, Queue<int> commands)
     {
         switch (status.CurrentState)
         {
             case State.Standing:
                 switch (command)
                 {
-                    case Command.E:
-                        if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
+                    case CommandEnum.E:
+                        if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
                             frontDash();
                         stateBehaviour.ForwardWalk(animator);
                         break;
-                    case Command.W:
-                        if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
+                    case CommandEnum.W:
+                        if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
                             backDash();
                         stateBehaviour.BackwardWalk(animator);
                         break;
-                    case Command.Neutral:
+                    case CommandEnum.Neutral:
                         stateBehaviour.WalkStop(animator);
                         Idle();
                         break;
-                    case Command.SW:
-                    case Command.S:
-                    case Command.SE:
+                    case CommandEnum.SW:
+                    case CommandEnum.S:
+                    case CommandEnum.SE:
                         crouch();
                         break;
-                    case Command.NW:
-                    case Command.N:
-                    case Command.NE:
+                    case CommandEnum.NW:
+                    case CommandEnum.N:
+                    case CommandEnum.NE:
                         jump();
                         break;
                 }
@@ -774,18 +784,18 @@ public class PlayerController : MonoBehaviour
             case State.Crouching:
                 switch (command)
                 {
-                    case Command.SW:
+                    case CommandEnum.SW:
                         crouch();
                         animator.SetBool("BWalk", true);
                         break;
-                    case Command.SE:
+                    case CommandEnum.SE:
                         crouch();
                         animator.SetBool("Walk", true);
                         break;
-                    case Command.S:
+                    case CommandEnum.S:
                         crouch();
                         break;
-                    case Command.Neutral:
+                    case CommandEnum.Neutral:
                         Idle();
                         break;
                 }
@@ -793,10 +803,10 @@ public class PlayerController : MonoBehaviour
             case State.Attacking:
                 switch (command)
                 {
-                    case Command.S:
+                    case CommandEnum.S:
                         crouch();
                         break;
-                    case Command.Neutral:
+                    case CommandEnum.Neutral:
                         Idle();
                         break;
                 }
@@ -804,11 +814,11 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    void guardStateBasedOnCommand(Command command)
+    void guardStateBasedOnCommand(CommandEnum command)
     {
-        if (command == Command.W)
+        if (command == CommandEnum.W)
             guard(GuardState.Stand);
-        else if (command == Command.SW)
+        else if (command == CommandEnum.SW)
             guard(GuardState.Crouch);
         else
             guard(GuardState.NoGuard);

@@ -44,7 +44,7 @@ namespace Colosseum
     }
 
     // 커맨드 가시화
-    public enum Command
+    public enum CommandEnum
     {
         SW = 1,
         S = 2,
