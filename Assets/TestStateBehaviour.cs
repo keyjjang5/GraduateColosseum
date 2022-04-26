@@ -7,12 +7,12 @@ public class TestStateBehaviour : StateMachineBehaviour
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
-        Debug.Log("Animator : " + animator);
-        Debug.Log("StateInfo : " + stateInfo.shortNameHash);
+        //Debug.Log("Animator : " + animator);
+        //Debug.Log("StateInfo : " + stateInfo.shortNameHash);
         
-        Debug.Log("LayerIndex : " + layerIndex);
+        //Debug.Log("LayerIndex : " + layerIndex);
         GameObject player = GameObject.Find("1pPlayer");
-        Debug.Log("PlayerPosition : " + player.transform.position);
+        //Debug.Log("PlayerPosition : " + player.transform.position);
     }
 
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
@@ -21,7 +21,7 @@ public class TestStateBehaviour : StateMachineBehaviour
         //Debug.Log("Now Update");
         if(Input.GetKeyDown(KeyCode.U))
         {
-            Debug.Log("Press U Button");
+            //Debug.Log("Press U Button");
         }
     }
 
@@ -45,7 +45,7 @@ public class TestStateBehaviour : StateMachineBehaviour
     //}
     override public void OnStateMachineEnter(Animator animator, int stateMachinePathHash)
     {
-        Debug.Log("OnStateMachineEnter");
+        //Debug.Log("OnStateMachineEnter");
     }
 
     public void ForwardWalk(Animator animator)

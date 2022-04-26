@@ -1,2 +1,0 @@
-## 리플레이 작성을 위한 로그파일
-## NumPadCommand, PostCommandTime, CurrentTime

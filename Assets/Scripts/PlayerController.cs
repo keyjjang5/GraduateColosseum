@@ -89,6 +89,17 @@ public class PlayerController : MonoBehaviour
             {3, new AttackArea.AttackInfo(17, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 진짜 잽
             {4, new AttackArea.AttackInfo(5, transform, AttackArea.AttackType.upper, new Vector3(0,500f,200f)) },
+            // 백블로우
+            {5, new AttackArea.AttackInfo(14, transform, AttackArea.AttackType.upper, Vector3.zero) },
+            // 전진 훅
+            {6, new AttackArea.AttackInfo(12, transform, AttackArea.AttackType.upper, Vector3.zero) },
+            // 팔꿈치 해머
+            {7, new AttackArea.AttackInfo(19, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 퀵 훅
+            {8, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.upper, Vector3.zero) },
+            // 바디 블로우
+            {9, new AttackArea.AttackInfo(18, transform, AttackArea.AttackType.middle, Vector3.zero) }
+
         };
         attackInfoDictRP = new Dictionary<int, AttackArea.AttackInfo>()
         {
@@ -114,7 +125,11 @@ public class PlayerController : MonoBehaviour
             // 앉아 짠발
             {3, new AttackArea.AttackInfo(8, transform, AttackArea.AttackType.lower, Vector3.zero) },
             // 경천
-            {4, new AttackArea.AttackInfo(18, transform, AttackArea.AttackType.middle, Vector3.zero) }
+            {4, new AttackArea.AttackInfo(18, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 파쿰람 미들킥 1-2타
+            {5, new AttackArea.AttackInfo(13, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 니킥
+            {6, new AttackArea.AttackInfo(16, transform, AttackArea.AttackType.middle, Vector3.zero) }
         };
         attackInfoDictRK = new Dictionary<int, AttackArea.AttackInfo>()
         {
@@ -127,7 +142,13 @@ public class PlayerController : MonoBehaviour
             // 중단 오리발
             {4, new AttackArea.AttackInfo(13, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 기상 오른발
-            {5, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) }
+            {5, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 뻥발
+            {6, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 이슬
+            {7, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            // 돌려차기 하이킥
+            {8, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) }
 
         };
 
@@ -155,7 +176,9 @@ public class PlayerController : MonoBehaviour
         // 상태와 커맨드에 따른 행동
         actionBasedOnState((CommandEnum)command.CurrentCommand, command.Commands);
 
+        // 특정 행동을 실행한다.
         PlayAction(command.Commands, command.ActiveCode);
+
     }
 
     void DummyFixedUpdate()
@@ -309,9 +332,13 @@ public class PlayerController : MonoBehaviour
     {
         string s = null;
         foreach (int i in commands)
+        {
             s += i;
+            
+        }
+        Debug.Log("s : " + s);
         bool b = s.Contains(command);
-        //Debug.Log(command + "는 : " + b);
+        Debug.Log(command + "는 : " + b);
 
         return b;
     }
@@ -387,10 +414,21 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "56") && postCommand == 6)
+                if (searchCommands(commands, "65") && commandSystem.GetCommand().PostCommand == 6)
+                    code = 9;
+                else if (commandSystem.GetCommand().PostCommand == 6)
                     code = 2;
-                else if (searchCommands(commands, "53") && postCommand == 3)
+                else if (commandSystem.GetCommand().PostCommand == 3)
                     code = 3;
+                else if (commandSystem.GetCommand().PostCommand == 4)
+                    code = 5;
+                else if (commandSystem.GetCommand().PostCommand == 9)
+                    code = 6;
+                else if (commandSystem.GetCommand().PostCommand == 7)
+                    code = 7;
+                else if (commandSystem.GetCommand().PostCommand == 8)
+                    code = 8;
+                
                 else
                     code = 4; // code 1;
                 break;
@@ -423,7 +461,7 @@ public class PlayerController : MonoBehaviour
             // 애니메니터 변수 초기화
             //clearAnimator();
 
-            attackInfoDictLP.TryGetValue(code, out attackInfo);
+            attackInfoDictLP.TryGetValue(code, out attackInfo); // 이 부분을 attackInfo대신 명령 패턴을 꺼내도록 개선
 
             // 공격상태로 전환
             status.CurrentState = State.Attacking;
@@ -431,8 +469,9 @@ public class PlayerController : MonoBehaviour
             // 행동중 표시
             animator.SetBool("Acting", true);
         }
-
-        clearCommands();
+        //commands.Clear();
+        //clearCommands();
+        commandSystem.GetCommand().Clear();
     }
 
     // 오른손 공격 탐색, 실행
@@ -443,13 +482,13 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "56") && postCommand == 6)
+                if (searchCommands(commands, "56") && commandSystem.GetCommand().PostCommand == 6)
                     code = 2;
-                else if (searchCommands(commands, "53") && postCommand == 3)
+                else if (searchCommands(commands, "53") && commandSystem.GetCommand().PostCommand == 3)
                     code = 3;
-                else if (searchCommands(commands, "523") && postCommand == 3)
+                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
                     code = 5;
-                else if (searchCommands(commands, "54") && postCommand == 4)
+                else if (searchCommands(commands, "54") && commandSystem.GetCommand().PostCommand == 4)
                     code = 6;
                 else
                     code = 1;
@@ -510,10 +549,15 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "59") && postCommand == 9)
-                    code = 2;
-                else if (searchCommands(commands, "656") && postCommand == 6)
+                if (searchCommands(commands, "656") && commandSystem.GetCommand().PostCommand == 6)
                     code = 4;
+                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
+                    code = 6;
+                else if (commandSystem.GetCommand().PostCommand == 9)
+                    code = 2;
+                else if (commandSystem.GetCommand().PostCommand == 3)
+                    code = 5;
+                
                 else
                     code = 1;
                 break;
@@ -569,10 +613,16 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "52") && postCommand == 2)
+                if (searchCommands(commands, "656") && commandSystem.GetCommand().PostCommand == 6)
+                    code = 6;
+                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
+                    code = 7;
+                else if (commandSystem.GetCommand().PostCommand == 2)
                     code = 2;
-                else if (searchCommands(commands, "53") && postCommand == 3)
+                else if (commandSystem.GetCommand().PostCommand == 3)
                     code = 4;
+                else if (commandSystem.GetCommand().PostCommand == 4)
+                    code = 8;
                 else
                     code = 1;
                 break;
@@ -756,12 +806,12 @@ public class PlayerController : MonoBehaviour
                 switch (command)
                 {
                     case CommandEnum.E:
-                        if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
-                            frontDash();
                         stateBehaviour.ForwardWalk(animator);
+                        if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - commandSystem.GetCommand().PostCommandTime < 0.15f)
+                            frontDash();
                         break;
                     case CommandEnum.W:
-                        if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
+                        if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - commandSystem.GetCommand().PostCommand < 0.15f)
                             backDash();
                         stateBehaviour.BackwardWalk(animator);
                         break;
@@ -777,7 +827,7 @@ public class PlayerController : MonoBehaviour
                     case CommandEnum.NW:
                     case CommandEnum.N:
                     case CommandEnum.NE:
-                        jump();
+                        //jump();
                         break;
                 }
                 break;

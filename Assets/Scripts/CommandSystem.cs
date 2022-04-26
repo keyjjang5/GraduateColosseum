@@ -61,7 +61,13 @@ public class CommandSystem : MonoBehaviour
         public void Clear()
         {
             commands.Clear();
+            postCommand = 0;
             inputs.Clear();
+        }
+
+        public Queue<int> GetCommands()
+        {
+            return commands;
         }
     }
     Command command;
@@ -141,16 +147,7 @@ public class CommandSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //int command = GetCurrentCommand();
-        //// 키보드 입력
-        //if (Input.GetKeyDown(KeyCode.U))
-        //    commandView(command, KeyCode.U);
-        //else if (Input.GetKeyDown(KeyCode.I))
-        //    commandView(command, KeyCode.I);
-        //else if (Input.GetKeyDown(KeyCode.J))
-        //    commandView(command, KeyCode.J);
-        //else if (Input.GetKeyDown(KeyCode.K))
-        //    commandView(command, KeyCode.K);
+
     }
 
     private void FixedUpdate()
@@ -183,7 +180,7 @@ public class CommandSystem : MonoBehaviour
     {
         // queue에 커맨드 추가
         // 추가하는 과정에서 실제 큐에 추가할지를 확인
-        if (postCommand != currentCommand)
+        if (command.PostCommand != currentCommand)
         {
             commandChange(currentCommand);
             //commandView(currentCommand, KeyCode.T);
