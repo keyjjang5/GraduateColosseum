@@ -13,6 +13,9 @@ public class EnemyController : MonoBehaviour
     Status status;
     public UnityEvent HitEvent;
     GameObject manager;
+    public EffectManager effectManager;
+
+    bool isGuard;
     // Start is called before the first frame update
     void Start()
     {
@@ -26,6 +29,10 @@ public class EnemyController : MonoBehaviour
         //HitEvent.AddListener(() => status.CurrentState = State.Hitted);
         HitEvent.AddListener(() => status.HitState = HitState.Hit);
         HitEvent.AddListener(() => isHit = true);
+
+        effectManager = FindObjectOfType<EffectManager>();
+
+        isGuard = false;
     }
 
     // Update is called once per frame
@@ -36,9 +43,10 @@ public class EnemyController : MonoBehaviour
             sit();
             status.Guard = GuardState.Crouch;
         }
-        else
-        {   // 임시
-            //status.Guard = Guard.NoGuard;
+        else if(Input.GetKeyDown(KeyCode.Keypad8))
+        {
+            standing();
+            status.Guard = GuardState.NoGuard;
         }
     }
 
@@ -47,7 +55,10 @@ public class EnemyController : MonoBehaviour
     {
         if (isHit)
             return;
+        if (isGuard)
+            return;
 
+        // 가드 확인
         switch(attackInfo.attackType)
         {
             case AttackArea.AttackType.upper:
@@ -56,6 +67,8 @@ public class EnemyController : MonoBehaviour
                 if (status.Guard == GuardState.Stand)
                 {
                     standingGuard(attackInfo);
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+                    isGuard = true;
                     return;
                 }
                 break;
@@ -63,6 +76,8 @@ public class EnemyController : MonoBehaviour
                 if (status.Guard == GuardState.Stand)
                 {
                     standingGuard(attackInfo);
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+                    isGuard = true;
                     return;
                 }
                 break;
@@ -70,8 +85,27 @@ public class EnemyController : MonoBehaviour
                 if (status.Guard == GuardState.Crouch)
                 {
                     crouchGuard(attackInfo);
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+
                     return;
                 }
+                break;
+        }
+
+        // 공격에 따른 피격 모션
+        switch(attackInfo.attackType)
+        {
+            case AttackArea.AttackType.upper:
+                animator.SetInteger("HitPos", 1);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
+                break;
+            case AttackArea.AttackType.middle:
+                animator.SetInteger("HitPos", 2);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
+                break;
+            case AttackArea.AttackType.lower:
+                animator.SetInteger("HitPos", 3);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
                 break;
         }
 
@@ -98,6 +132,8 @@ public class EnemyController : MonoBehaviour
         animator.SetBool("StandingGuard", false);
         animator.SetBool("CrouchGuard", false);
 
+        isGuard = false;
+
         status.CurrentState = State.Standing;
     }
 
@@ -108,7 +144,22 @@ public class EnemyController : MonoBehaviour
         animator.SetBool("Walk", false);
         animator.SetBool("BWalk", false);
 
+        animator.SetBool("Standing", false);
         status.CurrentState = State.Crouching;
+    }
+
+    // 서기
+    void standing()
+    {
+        animator.SetBool("Sit", false);
+        animator.SetBool("Standing", true);
+        animator.SetBool("Walk", false);
+        animator.SetBool("BWalk", false);
+    }
+
+    void Standing()
+    {
+        status.CurrentState = State.Standing;
     }
 
     void standingGuard(AttackArea.AttackInfo attackInfo)

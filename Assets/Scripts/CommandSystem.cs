@@ -139,7 +139,7 @@ public class CommandSystem : MonoBehaviour
         button = GameObject.Find("Command_Button").GetComponent<Text>();
 
         string fileName = DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss");
-        sw = OpenTextFile(fileName + ".txt");
+        //sw = OpenTextFile(fileName + ".txt");
 
         command = new Command();
     }
@@ -173,7 +173,8 @@ public class CommandSystem : MonoBehaviour
 
         command.Update(commands, inputs, postCommand, currentCommand, postCommandTime, currentCommandTime, inputsToActiveCode(inputs));
 
-        writeLog(sw, currentCommand, postCommandTime);
+        // 로그 작성부분
+        //writeLog(sw, currentCommand, postCommandTime);
     }
 
     void AddArrowCommand(Queue<int> commands, int currentCommand)
@@ -189,7 +190,7 @@ public class CommandSystem : MonoBehaviour
 
     private void OnDestroy()
     {
-        CloseTextFile(sw);
+        //CloseTextFile(sw);
     }
 
     public int GetCurrentCommand()

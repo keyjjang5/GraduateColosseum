@@ -18,6 +18,7 @@ public class AttackArea : MonoBehaviour
         public Transform attacker; // 공격자.
         public AttackType attackType;
         public Vector3 force;
+        public Vector3 hitPos;
 
         public AttackInfo(int power, Transform attacker, AttackType type, Vector3 force)
         {
@@ -25,6 +26,7 @@ public class AttackArea : MonoBehaviour
             this.attacker = attacker;
             attackType = type;
             this.force = force;
+            hitPos = Vector3.zero;
         }
         public AttackInfo()
         {
@@ -32,6 +34,7 @@ public class AttackArea : MonoBehaviour
             this.attacker = null;
             attackType = 0;
             this.force = Vector3.zero;
+            hitPos = Vector3.zero;
         }
         public void Init()
         {
@@ -39,6 +42,7 @@ public class AttackArea : MonoBehaviour
             this.attacker = null;
             attackType = 0;
             this.force = Vector3.zero;
+            hitPos = Vector3.zero;
         }
     }
     public enum AttackType
@@ -52,6 +56,7 @@ public class AttackArea : MonoBehaviour
     void OnTriggerEnter(Collider other)
     {
         // 공격 당한 상대의 Damage 메시지를 보낸다.
+        playerController.attackInfo.hitPos = other.transform.position;
         other.transform.root.SendMessage("Hit", playerController.attackInfo);
         //other.SendMessage("Damage", playerController.attackInfo);
         //if (other.CompareTag("EnemyHit"))

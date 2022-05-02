@@ -324,7 +324,7 @@ public class PlayerController : MonoBehaviour
         string s = null;
         foreach (int j in commands)
             s += j;
-        Debug.Log("commands : :" + s);
+        //Debug.Log("commands : :" + s);
     }
 
     // 커맨드 찾기
@@ -336,9 +336,9 @@ public class PlayerController : MonoBehaviour
             s += i;
             
         }
-        Debug.Log("s : " + s);
+        //Debug.Log("s : " + s);
         bool b = s.Contains(command);
-        Debug.Log(command + "는 : " + b);
+        //Debug.Log(command + "는 : " + b);
 
         return b;
     }
@@ -392,11 +392,6 @@ public class PlayerController : MonoBehaviour
 
     void PlayAction(Queue<int>commands, KeyCode code)
     {
-        //Action lpAction = new LPAction();
-        //Action rpAction = new RPAction();
-        //Action lkAction = new LKAction();
-        //Action rkAction = new RKAction();
-
         if (code == KeyCode.U)
             activeLP(commands);
         else if (code == KeyCode.I)
