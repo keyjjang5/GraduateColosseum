@@ -13,10 +13,12 @@ public class CommandSystem : MonoBehaviour
 {
     // 커맨드관련 변수
     Queue<int> commands;
+    Queue<int> secondPlayerCommands;
     int postCommand = 0;
     float postCommandTime = 0;
     float currentCommandTime = 0;
     List<KeyCode> inputs = new List<KeyCode>();
+    List<KeyCode> inputs2p= new List<KeyCode>();
 
     // 전달하기 위한 클래스
     public class Command
@@ -47,15 +49,19 @@ public class CommandSystem : MonoBehaviour
             activeCode = 0;
         }
 
-        public void Update(Queue<int> commands, List<KeyCode> inputs, int postCommand, int currentCommand, float postCommandTime, float currentCommandTime, KeyCode input)
+        public void Update(List<KeyCode> inputs, int currentCommand, KeyCode activeCode)
         {
-            this.commands = commands;
+            //this.commands = commands;
+            //this.postCommand = postCommand;
+            //this.postCommandTime = postCommandTime;
+            //this.currentCommandTime = currentCommandTime;
+
             this.inputs = inputs;
-            this.postCommand = postCommand;
-            this.postCommandTime = postCommandTime;
             this.currentCommand = currentCommand;
-            this.currentCommandTime = currentCommandTime;
-            this.activeCode = input;
+            this.activeCode = activeCode;
+
+            // commands, postCommand, postCommandTime, currentCommandTime 해결
+            AddArrowCommand(currentCommand);
         }
 
         public void Clear()
@@ -69,8 +75,36 @@ public class CommandSystem : MonoBehaviour
         {
             return commands;
         }
+
+        void AddArrowCommand(int currentCommand)
+        {
+            // queue에 커맨드 추가
+            // 추가하는 과정에서 실제 큐에 추가할지를 확인
+            if (PostCommand != currentCommand)
+            {
+                commandChange(currentCommand);
+            }
+        }
+
+        void commandChange(int command)
+        {
+            this.commands.Enqueue(command);
+
+            if (commands.Count > 4)
+                commands.Dequeue();
+
+            postCommand = command;
+            postCommandTime = currentCommandTime;
+            currentCommandTime = Time.time;
+
+            string s = null;
+            foreach (int j in commands)
+                s += j;
+            //Debug.Log("s : " + s);
+        }
     }
     Command command;
+    Command secondPlayerCommand;
 
     Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
         {
@@ -125,6 +159,13 @@ public class CommandSystem : MonoBehaviour
         KeyCode.J,
         KeyCode.K
     };
+    List<KeyCode> inputTypes2p = new List<KeyCode>()
+    {
+        KeyCode.Keypad7,
+        KeyCode.Keypad8,
+        KeyCode.Keypad4,
+        KeyCode.Keypad5
+    };
 
 
     Text arrow;
@@ -135,6 +176,7 @@ public class CommandSystem : MonoBehaviour
     void Start()
     {
         commands = new Queue<int>();
+        secondPlayerCommands = new Queue<int>();
         arrow = GameObject.Find("Command_Arrow").GetComponent<Text>();
         button = GameObject.Find("Command_Button").GetComponent<Text>();
 
@@ -142,6 +184,7 @@ public class CommandSystem : MonoBehaviour
         //sw = OpenTextFile(fileName + ".txt");
 
         command = new Command();
+        secondPlayerCommand = new Command();
     }
 
     // Update is called once per frame
@@ -154,8 +197,11 @@ public class CommandSystem : MonoBehaviour
     {
         // 지난 입력을 초기화한다.
         inputs.Clear();
+        inputs2p.Clear();
+
 
         int currentCommand = GetCurrentCommand();
+        int current2pCommand = GetCurrent2pCommand();
 
         if (Input.anyKeyDown)
         {
@@ -165,13 +211,21 @@ public class CommandSystem : MonoBehaviour
                 if (Input.GetKeyDown(code))
                     inputs.Add(code);
             }
+            foreach(var code in inputTypes2p)
+            {
+                if (Input.GetKeyDown(code))
+                    inputs2p.Add(code);
+            }
             // 임시로 여기에 만들어 놓음, 어떻게 놓을지 고민 필요
             commandView(currentCommand, inputs);
         }
 
-        AddArrowCommand(commands, currentCommand);
+        //AddArrowCommand(commands, currentCommand);
+        //AddArrowCommand(secondPlayerCommands, current2pCommand);
+        
 
-        command.Update(commands, inputs, postCommand, currentCommand, postCommandTime, currentCommandTime, inputsToActiveCode(inputs));
+        command.Update(inputs, currentCommand, inputsToActiveCode(inputs));
+        secondPlayerCommand.Update(inputs2p, current2pCommand, inputsToActiveCode(inputs2p));
 
         // 로그 작성부분
         //writeLog(sw, currentCommand, postCommandTime);
@@ -183,7 +237,7 @@ public class CommandSystem : MonoBehaviour
         // 추가하는 과정에서 실제 큐에 추가할지를 확인
         if (command.PostCommand != currentCommand)
         {
-            commandChange(currentCommand);
+            commandChange(commands, currentCommand);
             //commandView(currentCommand, KeyCode.T);
         }
     }
@@ -203,6 +257,16 @@ public class CommandSystem : MonoBehaviour
         return command;
     }
 
+    public int GetCurrent2pCommand()
+    {
+        float horizontal = Input.GetAxisRaw("2pHorizontal");
+        float vertical = Input.GetAxisRaw("2pVertical");
+
+        horiVerCommand.TryGetValue(new Vector2(horizontal, vertical), out int command);
+
+        return command;
+    }
+
     bool IsCommandChange(CommandEnum command)
     {
         if (postCommand != (int)command)
@@ -211,7 +275,7 @@ public class CommandSystem : MonoBehaviour
     }
 
     // 커맨드 queue 관리
-    void commandChange(int command)
+    void commandChange(Queue<int> commands, int command)
     {
         commands.Enqueue(command);
 
@@ -267,21 +331,26 @@ public class CommandSystem : MonoBehaviour
         int num = 0;
         foreach (KeyCode input in inputs)
         {
-            if (input == KeyCode.U || input == KeyCode.I || input == KeyCode.J || input == KeyCode.K)
+            if (input == KeyCode.U || input == KeyCode.I || input == KeyCode.J || input == KeyCode.K
+                || input == KeyCode.Keypad7 || input == KeyCode.Keypad8 || input == KeyCode.Keypad4 || input == KeyCode.Keypad5)
             {
                 int i = 0;
                 switch (input)
                 {
                     case KeyCode.U:
+                    case KeyCode.Keypad7:
                         i = 1;
                         break;
                     case KeyCode.I:
+                    case KeyCode.Keypad8:
                         i = 2;
                         break;
                     case KeyCode.J:
+                    case KeyCode.Keypad4:
                         i = 3;
                         break;
                     case KeyCode.K:
+                    case KeyCode.Keypad5:
                         i = 4;
                         break;
                 }
@@ -402,9 +471,19 @@ public class CommandSystem : MonoBehaviour
         return inputs;
     }
 
+    public List<KeyCode> GetInputs2p()
+    {
+        return inputs2p;
+    }
+
     public Command GetCommand()
     {
         return command;
+    }
+
+    public Command Get2pCommand()
+    {
+        return secondPlayerCommand;
     }
 
     // 로그 작성 관련함수

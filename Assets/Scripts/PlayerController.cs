@@ -168,17 +168,32 @@ public class PlayerController : MonoBehaviour
     {
         transform.LookAt(center);
 
-        var command = commandSystem.GetCommand();
+        if (transform.name == "1pPlayer")
+        {
+            var command = commandSystem.GetCommand();
 
-        // 커맨드에 따른 가드 상태 변화
-        guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
+            // 커맨드에 따른 가드 상태 변화
+            guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
 
-        // 상태와 커맨드에 따른 행동
-        actionBasedOnState((CommandEnum)command.CurrentCommand, command.Commands);
+            // 상태와 커맨드에 따른 행동
+            actionBasedOnState(command, (CommandEnum)command.CurrentCommand, command.Commands);
 
-        // 특정 행동을 실행한다.
-        PlayAction(command.Commands, command.ActiveCode);
+            // 특정 행동을 실행한다.
+            PlayAction(command, command.Commands, command.ActiveCode);
+        }
+        else if(transform.name == "2pPlayer")
+        {
+            var command = commandSystem.Get2pCommand();
 
+            // 커맨드에 따른 가드 상태 변화
+            guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
+
+            // 상태와 커맨드에 따른 행동
+            actionBasedOnState(command, (CommandEnum)command.CurrentCommand, command.Commands);
+
+            // 특정 행동을 실행한다.
+            PlayAction(command, command.Commands, command.ActiveCode);
+        }
     }
 
     void DummyFixedUpdate()
@@ -312,31 +327,27 @@ public class PlayerController : MonoBehaviour
     }
 
     // 커맨드가 바뀐것을 queue에 추가하고 많이 쌓이면 오래된 것부터 제거 관리
-    void addCommand(int command)
-    {
-        commands.Enqueue(command);
-        if (commands.Count > 4)
-            commands.Dequeue();
-        postCommand = command;
-        postCommandTime = currentCommandTime;
-        currentCommandTime = Time.time;
+    //void addCommand(int command)
+    //{
+    //    commands.Enqueue(command);
+    //    if (commands.Count > 4)
+    //        commands.Dequeue();
+    //    postCommand = command;
+    //    postCommandTime = currentCommandTime;
+    //    currentCommandTime = Time.time;
 
-        string s = null;
-        foreach (int j in commands)
-            s += j;
-        //Debug.Log("commands : :" + s);
-    }
+    //    string s = null;
+    //    foreach (int j in commands)
+    //        s += j;
+    //    //Debug.Log("commands : :" + s);
+    //}
 
     // 커맨드 찾기
     bool searchCommands(Queue<int> commands, string command) 
     {
         string s = null;
         foreach (int i in commands)
-        {
             s += i;
-            
-        }
-        //Debug.Log("s : " + s);
         bool b = s.Contains(command);
         //Debug.Log(command + "는 : " + b);
 
@@ -390,38 +401,38 @@ public class PlayerController : MonoBehaviour
     //    ~RKAction() { Debug.Log("자식클래스 소멸자"); }
     //}
 
-    void PlayAction(Queue<int>commands, KeyCode code)
+    void PlayAction(CommandSystem.Command command, Queue<int>commands, KeyCode code)
     {
         if (code == KeyCode.U)
-            activeLP(commands);
+            activeLP(command, commands);
         else if (code == KeyCode.I)
-            activeRP(commands);
+            activeRP(command, commands);
         else if (code == KeyCode.J)
-            activeLK(commands);
+            activeLK(command, commands);
         else if (code == KeyCode.K)
-            activeRK(commands);
+            activeRK(command, commands);
     }
     // 왼손 공격 탐색, 실행
-    void activeLP(Queue<int> commands)
+    void activeLP(CommandSystem.Command command, Queue<int> commands)
     {
         int code = 0;
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "65") && commandSystem.GetCommand().PostCommand == 6)
+                if (searchCommands(commands, "65") && command.PostCommand == 6)
                     code = 9;
-                else if (commandSystem.GetCommand().PostCommand == 6)
+                else if (command.PostCommand == 6)
                     code = 2;
-                else if (commandSystem.GetCommand().PostCommand == 3)
+                else if (command.PostCommand == 3)
                     code = 3;
-                else if (commandSystem.GetCommand().PostCommand == 4)
+                else if (command.PostCommand == 4)
                     code = 5;
-                else if (commandSystem.GetCommand().PostCommand == 9)
+                else if (command.PostCommand == 9)
                     code = 6;
-                else if (commandSystem.GetCommand().PostCommand == 7)
+                else if (command.PostCommand == 7)
                     code = 7;
-                else if (commandSystem.GetCommand().PostCommand == 8)
+                else if (command.PostCommand == 8)
                     code = 8;
                 
                 else
@@ -430,22 +441,6 @@ public class PlayerController : MonoBehaviour
             case State.Crouching:
                 break;
         }
-        /*
-        if (status.CurrentState == State.Standing)
-        {
-            if (searchCommands("56") && postCommand == 6)
-                code = 2;
-            else if (searchCommands("53") && postCommand == 3)
-                code = 3;
-            else
-                code = 4; // code 1;
-        }
-        // 앉은자세
-        if(status.CurrentState == State.Crouching)
-        {
-            
-        }
-        */
         // attackInfo저장
         if (code != 0)
         {
@@ -466,53 +461,33 @@ public class PlayerController : MonoBehaviour
         }
         //commands.Clear();
         //clearCommands();
-        commandSystem.GetCommand().Clear();
+        command.Clear();
     }
 
     // 오른손 공격 탐색, 실행
-    void activeRP(Queue<int> commands)
+    void activeRP(CommandSystem.Command command, Queue<int> commands)
     {
         int code = 0;
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "56") && commandSystem.GetCommand().PostCommand == 6)
+                if (searchCommands(commands, "56") && command.PostCommand == 6)
                     code = 2;
-                else if (searchCommands(commands, "53") && commandSystem.GetCommand().PostCommand == 3)
+                else if (searchCommands(commands, "53") && command.PostCommand == 3)
                     code = 3;
-                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
+                else if (searchCommands(commands, "523") && command.PostCommand == 3)
                     code = 5;
-                else if (searchCommands(commands, "54") && commandSystem.GetCommand().PostCommand == 4)
+                else if (searchCommands(commands, "54") && command.PostCommand == 4)
                     code = 6;
                 else
                     code = 1;
                 break;
             case State.Crouching:
-                if (postCommand == 5)
+                if (command.PostCommand == 5)
                     code = 4;
                 break;
         }
-        /*
-        if (status.CurrentState == State.Standing)
-        {
-            if (searchCommands("56") && postCommand == 6)
-                code = 2;
-            else if (searchCommands("53") && postCommand == 3)
-                code = 3;
-            else if (searchCommands("523") && postCommand == 3)
-                code = 5;
-            else if (searchCommands("54") && postCommand == 4)
-                code = 6;
-            else
-                code = 1;
-        }
-        if(status.CurrentState == State.Crouching)
-        {
-            if (postCommand == 5)
-                code = 4;
-        }
-        */
         if (code != 0)
         {
             // 애니메이션 실행
@@ -531,12 +506,13 @@ public class PlayerController : MonoBehaviour
             // 행동중 표시
             animator.SetBool("Acting", true);
         }
-            
-        clearCommands();
+
+        //clearCommands();
+        command.Clear();
     }
 
     // 왼발 공격 탐색, 실행
-    void activeLK(Queue<int> commands)
+    void activeLK(CommandSystem.Command command, Queue<int> commands)
     {
         // 선자세
         int code = 0;
@@ -544,39 +520,23 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "656") && commandSystem.GetCommand().PostCommand == 6)
+                if (searchCommands(commands, "656") && command.PostCommand == 6)
                     code = 4;
-                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
+                else if (searchCommands(commands, "523") && command.PostCommand == 3)
                     code = 6;
-                else if (commandSystem.GetCommand().PostCommand == 9)
+                else if (command.PostCommand == 9)
                     code = 2;
-                else if (commandSystem.GetCommand().PostCommand == 3)
+                else if (command.PostCommand == 3)
                     code = 5;
                 
                 else
                     code = 1;
                 break;
             case State.Crouching:
-                if (postCommand == 2)
+                if (command.PostCommand == 2)
                     code = 3;
                 break;
         }
-        /*
-        if (status.CurrentState == State.Standing)
-        {
-            if (searchCommands("59") && postCommand == 9)
-                code = 2;
-            else if (searchCommands("656") && postCommand == 6)
-                code = 4;
-            else
-                code = 1;
-        }
-        if (status.CurrentState == State.Crouching)
-        {
-            if (postCommand == 2)
-                code = 3;
-        }
-        */
         if (code != 0)
         {
             // 애니메이션 실행
@@ -595,12 +555,13 @@ public class PlayerController : MonoBehaviour
             // 행동중 표시
             animator.SetBool("Acting", true);
         }
-        
-        clearCommands();
+
+        //clearCommands();
+        command.Clear();
     }
 
     // 오른발 공격 탐색, 실행
-    void activeRK(Queue<int> commands)
+    void activeRK(CommandSystem.Command command, Queue<int> commands)
     {
         // 선자세
         int code = 0;
@@ -608,44 +569,26 @@ public class PlayerController : MonoBehaviour
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "656") && commandSystem.GetCommand().PostCommand == 6)
+                if (searchCommands(commands, "656") && command.PostCommand == 6)
                     code = 6;
-                else if (searchCommands(commands, "523") && commandSystem.GetCommand().PostCommand == 3)
+                else if (searchCommands(commands, "523") && command.PostCommand == 3)
                     code = 7;
-                else if (commandSystem.GetCommand().PostCommand == 2)
+                else if (command.PostCommand == 2)
                     code = 2;
-                else if (commandSystem.GetCommand().PostCommand == 3)
+                else if (command.PostCommand == 3)
                     code = 4;
-                else if (commandSystem.GetCommand().PostCommand == 4)
+                else if (command.PostCommand == 4)
                     code = 8;
                 else
                     code = 1;
                 break;
             case State.Crouching:
-                if (postCommand == 3)
+                if (command.PostCommand == 3)
                     code = 3;
-                else if (postCommand == 5)
+                else if (command.PostCommand == 5)
                     code = 5;
                 break;
         }
-        /*
-        if (status.CurrentState == State.Standing)
-        {
-            if (searchCommands("52") && postCommand == 2)
-                code = 2;
-            else if (searchCommands("53") && postCommand == 3)
-                code = 4;
-            else
-                code = 1;
-        }
-        if (status.CurrentState == State.Crouching)
-        {
-            if (postCommand == 3)
-                code = 3;
-            else if (postCommand == 5)
-                code = 5;
-        }
-        */
         if (code != 0)
         { 
             // 애니메이션 실행
@@ -664,8 +607,9 @@ public class PlayerController : MonoBehaviour
             // 행동중 표시
             animator.SetBool("Acting", true);
         }
-        
-        clearCommands();
+
+        //clearCommands();
+        command.Clear();
     }
 
     // 앞대시
@@ -793,20 +737,20 @@ public class PlayerController : MonoBehaviour
         status.Guard = guard;
     }
 
-    void actionBasedOnState(CommandEnum command, Queue<int> commands)
+    void actionBasedOnState(CommandSystem.Command command, CommandEnum currentCommand, Queue<int> commands)
     {
         switch (status.CurrentState)
         {
             case State.Standing:
-                switch (command)
+                switch (currentCommand)
                 {
                     case CommandEnum.E:
                         stateBehaviour.ForwardWalk(animator);
-                        if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - commandSystem.GetCommand().PostCommandTime < 0.15f)
+                        if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - command.PostCommandTime < 0.15f)
                             frontDash();
                         break;
                     case CommandEnum.W:
-                        if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - commandSystem.GetCommand().PostCommand < 0.15f)
+                        if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - command.PostCommand < 0.15f)
                             backDash();
                         stateBehaviour.BackwardWalk(animator);
                         break;
@@ -827,7 +771,7 @@ public class PlayerController : MonoBehaviour
                 }
                 break;
             case State.Crouching:
-                switch (command)
+                switch (currentCommand)
                 {
                     case CommandEnum.SW:
                         crouch();
@@ -846,7 +790,7 @@ public class PlayerController : MonoBehaviour
                 }
                 break;
             case State.Attacking:
-                switch (command)
+                switch (currentCommand)
                 {
                     case CommandEnum.S:
                         crouch();
