@@ -190,11 +190,6 @@ public class CommandSystem : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
-    }
-
-    private void FixedUpdate()
-    {
         // 지난 입력을 초기화한다.
         inputs.Clear();
         inputs2p.Clear();
@@ -211,24 +206,30 @@ public class CommandSystem : MonoBehaviour
                 if (Input.GetKeyDown(code))
                     inputs.Add(code);
             }
-            foreach(var code in inputTypes2p)
+            foreach (var code in inputTypes2p)
             {
                 if (Input.GetKeyDown(code))
                     inputs2p.Add(code);
             }
             // 임시로 여기에 만들어 놓음, 어떻게 놓을지 고민 필요
-            commandView(currentCommand, inputs);
+            // 하단에 입력한 키가 나타나는 기능, 1p만 나타나기 때문에 제거했다.
+            //commandView(currentCommand, inputs);
         }
 
         //AddArrowCommand(commands, currentCommand);
         //AddArrowCommand(secondPlayerCommands, current2pCommand);
-        
+
 
         command.Update(inputs, currentCommand, inputsToActiveCode(inputs));
         secondPlayerCommand.Update(inputs2p, current2pCommand, inputsToActiveCode(inputs2p));
 
         // 로그 작성부분
         //writeLog(sw, currentCommand, postCommandTime);
+    }
+
+    private void FixedUpdate()
+    {
+        
     }
 
     void AddArrowCommand(Queue<int> commands, int currentCommand)
@@ -514,7 +515,7 @@ public class CommandSystem : MonoBehaviour
             string s;
             while ((s = sr.ReadLine()) != null)
             {
-                Debug.Log(s);
+                //Debug.Log(s);
             }
         }
     }

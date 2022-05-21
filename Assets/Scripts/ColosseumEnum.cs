@@ -56,4 +56,15 @@ namespace Colosseum
         N = 8,
         NE = 9
     }
+
+    public enum ActionPriority
+    {
+        Move,
+        Dash,
+        LastCommand,
+        TwoCommand,
+        ThreeCommand,
+        Guard,
+        Hit
+    }
 }

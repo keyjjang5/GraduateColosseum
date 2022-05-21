@@ -19,7 +19,8 @@ public class AttackAreaManager : MonoBehaviour
         }
 
         // Hit시 바로 작동정지
-        GameObject.Find("2pPlayer").GetComponent<EnemyController>().HitEvent.AddListener(EndAttackHit);
+        GameObject.Find("1pPlayer").GetComponent<PlayerController>().HitEvent.AddListener(EndAttackHit);
+        GameObject.Find("2pPlayer").GetComponent<PlayerController>().HitEvent.AddListener(EndAttackHit);
     }
 
     // Update is called once per frame

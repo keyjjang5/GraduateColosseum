@@ -53,6 +53,7 @@ public class EnemyController : MonoBehaviour
     // 피격 당함
     public void Hit(AttackArea.AttackInfo attackInfo)
     {
+        Debug.Log("6");
         if (isHit)
             return;
         if (isGuard)

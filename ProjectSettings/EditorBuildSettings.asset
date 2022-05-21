@@ -4,5 +4,17 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Main.unity
+    guid: 89c22d8a648a4ce4195bb1de936fed92
+  - enabled: 1
+    path: Assets/Scenes/LocalPlayScene.unity
+    guid: dbdcbe0888123b04190395f1c67bdc66
+  - enabled: 1
+    path: Assets/Scenes/Ending.unity
+    guid: a51e57f796ab9434cbbc8803a20bd91f
+  - enabled: 1
+    path: Assets/Scenes/ReplayScene.unity
+    guid: c2d09b19250399c49b6ad8b001923bab
   m_configObjects: {}

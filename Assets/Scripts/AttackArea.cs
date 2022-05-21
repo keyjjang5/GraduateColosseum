@@ -7,8 +7,11 @@ public class AttackArea : MonoBehaviour
     EnemyController enemyController;
     void Start()
     {
-        playerController = GameObject.Find("1pPlayer").GetComponent<PlayerController>();
-        enemyController = GameObject.Find("2pPlayer").GetComponent<EnemyController>();
+        playerController = transform.root.GetComponent<PlayerController>();
+        if(transform.name == "1pPlayer")
+            enemyController = GameObject.Find("2pPlayer").GetComponent<EnemyController>();
+        else if(transform.name == "2pPlayer")
+            enemyController = GameObject.Find("1pPlayer").GetComponent<EnemyController>();
     }
 
 
@@ -36,13 +39,35 @@ public class AttackArea : MonoBehaviour
             this.force = Vector3.zero;
             hitPos = Vector3.zero;
         }
-        public void Init()
+        public void Clear()
         {
             attackPower = 0;
             this.attacker = null;
             attackType = 0;
             this.force = Vector3.zero;
             hitPos = Vector3.zero;
+        }
+    }
+    public class FrameData
+    {
+        // 액션이 끝날 때까지의 프레임
+        public int actionFrame;
+        // 공격 판정이 시작될 때의 프레임
+        public int startHitFrame;
+        // 공격 판정이 끝날 때의 프레임
+        public int endHitFrame;
+        // 연계 공격을 입력 할 수 있는 프레임
+        public int startInputFrame;
+        public int endInputFrame;
+
+        public FrameData() { }
+        public FrameData(int af, int shf, int ehf, int sif, int eif)
+        {
+            actionFrame = af;
+            startHitFrame = shf;
+            endHitFrame = ehf;
+            startInputFrame = sif;
+            endInputFrame = eif;
         }
     }
     public enum AttackType
@@ -57,6 +82,8 @@ public class AttackArea : MonoBehaviour
     {
         // 공격 당한 상대의 Damage 메시지를 보낸다.
         playerController.attackInfo.hitPos = other.transform.position;
+        //Debug.Log("other = " + other.transform.name);
+        //Debug.Log("other = " + other.transform.root.name);
         other.transform.root.SendMessage("Hit", playerController.attackInfo);
         //other.SendMessage("Damage", playerController.attackInfo);
         //if (other.CompareTag("EnemyHit"))

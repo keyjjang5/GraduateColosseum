@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
+using UnityEngine.Events;
+
 
 using Colosseum;
 
@@ -17,8 +19,6 @@ public class PlayerController : MonoBehaviour
     // 커맨드관련 변수
     Queue<int> commands;
     int postCommand = 0;
-    float postCommandTime = 0;
-    float currentCommandTime = 0;
     // 커맨드 입력
     // Vector2(horizontal, vertical)
     Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
@@ -56,6 +56,11 @@ public class PlayerController : MonoBehaviour
     Dictionary<int, AttackArea.AttackInfo> attackInfoDictLK;
     Dictionary<int, AttackArea.AttackInfo> attackInfoDictRK;
 
+    Dictionary<int, CommandPattern.Action> attackInfoCommandLP;
+    Dictionary<int, CommandPattern.Action> attackInfoCommandRP;
+    Dictionary<int, CommandPattern.Action> attackInfoCommandLK;
+    Dictionary<int, CommandPattern.Action> attackInfoCommandRK;
+
     Status status;
     public AttackArea.AttackInfo attackInfo;
     FightManager fightManager;
@@ -63,6 +68,22 @@ public class PlayerController : MonoBehaviour
     TestStateBehaviour stateBehaviour;
 
     CommandSystem commandSystem;
+
+    bool isHit;
+    Animator opponentAnimator;
+    public UnityEvent HitEvent;
+    GameObject manager;
+    public EffectManager effectManager;
+
+    bool isGuard;
+
+    Coroutine currentCoroutine;
+    int currentPriority;
+
+    AttackAreaManager attackAreaManager;
+
+    ReplaySystem replaySystem;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -144,23 +165,93 @@ public class PlayerController : MonoBehaviour
             // 기상 오른발
             {5, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 뻥발
-            {6, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            {6, new AttackArea.AttackInfo(12, transform, AttackArea.AttackType.middle, Vector3.zero) },
             // 이슬
-            {7, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) },
+            {7, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.lower, Vector3.zero) },
             // 돌려차기 하이킥
-            {8, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.middle, Vector3.zero) }
+            {8, new AttackArea.AttackInfo(10, transform, AttackArea.AttackType.upper, Vector3.zero) }
 
+        };
+
+        PlayerController pc = GetComponent<PlayerController>();
+        attackInfoCommandLP = new Dictionary<int, CommandPattern.Action>()
+        {
+            {2, new CommandPattern.LeftHook(pc)},
+            {3, new CommandPattern.LeftUppercut(pc) },
+            {4, new CommandPattern.LeftZap(pc)},
+            {5, new CommandPattern.LeftBackblow(pc) },
+            {6, new CommandPattern.LeftForwardHook(pc) },
+            {7, new CommandPattern.LeftElbowHammer(pc) },
+            {8, new CommandPattern.LeftQuickHook(pc) },
+            {9, new CommandPattern.LeftBodyblow(pc) }
+        };
+        attackInfoCommandRP = new Dictionary<int, CommandPattern.Action>()
+        {
+            {1, new CommandPattern.RightTwo(pc) },
+            {2, new CommandPattern.RightHook(pc) },
+            {3, new CommandPattern.RightUpper(pc) },
+            {4, new CommandPattern.RightStandUpper(pc) },
+            {5, new CommandPattern.RightUpperTwo(pc) },
+            {6, new CommandPattern.RightBackRP(pc) }
+        };
+        attackInfoCommandLK = new Dictionary<int, CommandPattern.Action>()
+        {
+            {1, new CommandPattern.LeftMiddleKick(pc) },
+            {2, new CommandPattern.LeftDoubleCutKick(pc) },
+            {3, new CommandPattern.LeftLowKick(pc) },
+            {4, new CommandPattern.LeftKickUppercut(pc) },
+            {5, new CommandPattern.LeftMiddleKickTwo(pc) },
+            {6, new CommandPattern.LeftKneeKick(pc) }
+        };
+
+        attackInfoCommandRK = new Dictionary<int, CommandPattern.Action>()
+        {
+            {1, new CommandPattern.RightHighKick(pc) },
+            {2, new CommandPattern.RightLowKick(pc) },
+            {3, new CommandPattern.RightLowKickCrouchRound(pc) },
+            {4, new CommandPattern.RightMiddleDuckKick(pc) },
+            {5, new CommandPattern.RightStandKick(pc) },
+            {6, new CommandPattern.RightMiddleStraightKick(pc) },
+            {7, new CommandPattern.RightLowKickRound(pc) },
+            {8, new CommandPattern.RightHighKickRound(pc) }
+            
         };
 
         stateBehaviour = animator.GetBehaviour<TestStateBehaviour>();
 
         commandSystem = FindObjectOfType<CommandSystem>();
-    }
 
+
+        // enemyController
+        isHit = false;
+        if (transform.name == "1pPlayer")
+            opponentAnimator = GameObject.Find("1pPlayer").GetComponent<Animator>();
+        else// if (transform.name == "2pPlayer")
+            opponentAnimator = GameObject.Find("2pPlayer").GetComponent<Animator>();
+
+
+        manager = GameObject.Find("Manager");
+
+        //HitEvent.AddListener(() => status.CurrentState = State.Hitted);
+        HitEvent.AddListener(() => status.HitState = HitState.Hit);
+        HitEvent.AddListener(() => isHit = true);
+
+        effectManager = FindObjectOfType<EffectManager>();
+
+        isGuard = false;
+
+        currentCoroutine = null;
+        currentPriority = 0;
+
+        attackAreaManager = GetComponent<AttackAreaManager>();
+
+        replaySystem = FindObjectOfType<ReplaySystem>();
+    }
 
     // Update is called once per frame
     void Update()
     {
+
     }
 
     
@@ -168,142 +259,45 @@ public class PlayerController : MonoBehaviour
     {
         transform.LookAt(center);
 
+        if (replaySystem.isReplay)
+            return;
+
+        CommandSystem.Command command = null;
+        CommandPattern.Action action = null;
+        CommandPattern.Action temp1 = null;
+        CommandPattern.Action temp2 = null;
+
+
         if (transform.name == "1pPlayer")
         {
-            var command = commandSystem.GetCommand();
-
-            // 커맨드에 따른 가드 상태 변화
-            guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
-
-            // 상태와 커맨드에 따른 행동
-            actionBasedOnState(command, (CommandEnum)command.CurrentCommand, command.Commands);
-
-            // 특정 행동을 실행한다.
-            PlayAction(command, command.Commands, command.ActiveCode);
+           command = commandSystem.GetCommand();
         }
-        else if(transform.name == "2pPlayer")
+        else// if (transform.name == "2pPlayer")
         {
-            var command = commandSystem.Get2pCommand();
-
-            // 커맨드에 따른 가드 상태 변화
-            guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
-
-            // 상태와 커맨드에 따른 행동
-            actionBasedOnState(command, (CommandEnum)command.CurrentCommand, command.Commands);
-
-            // 특정 행동을 실행한다.
-            PlayAction(command, command.Commands, command.ActiveCode);
+            command = commandSystem.Get2pCommand();
         }
-    }
 
-    void DummyFixedUpdate()
-    {
-        /*
-        if (status.CurrentState == State.Standing)
+        // 커맨드에 따른 가드 상태 변화
+        guardStateBasedOnCommand((CommandEnum)command.CurrentCommand);
+
+        // 상태와 커맨드에 따른 행동
+        temp1 = actionBasedOnState(command, (CommandEnum)command.CurrentCommand, command.Commands);
+
+        // 특정 행동을 실행한다.
+        temp2 = PlayAction(command, command.Commands, command.ActiveCode);
+
+        if (temp1 == null)
+            action = temp2;
+        else if (temp2 == null)
+            action = temp1;
+        else
+            action = (temp1.priority > temp2.priority) ? temp1 : temp2;
+
+        if (action != null)
         {
-            // 이동 영역
-            Vector3 velo = Vector3.zero;
-            horiVer.TryGetValue(new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")), out velo );
-            velo = Vector3.Lerp(currentVelocity, velo, Mathf.Min(Time.deltaTime * 5.0f, 1.0f));
-
-            //velocity.x = 1;
-            //velocity.z = 1;
-            //GetComponent<Rigidbody>().AddForce(velocity);
-            //GetComponent<Rigidbody>().MovePosition(transform.position+velo);
-            //transform.Translate(velo);
-
-            // Command에 따른 행동
-            switch(command)
-            {
-                case 6:
-                    if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
-                        frontDash();
-                    stateBehaviour.ForwardWalk(animator);
-
-                    break;
-                case 4:
-                    if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
-                        backDash();
-                    stateBehaviour.BackwardWalk(animator);
-                    break;
-                case 5:
-                    stateBehaviour.WalkStop(animator);
-                    Idle();
-                    break;
-                case 1:
-                case 2:
-                case 3:
-                    crouch();
-                    break;
-                case 7:
-                case 8:
-                case 9:
-                    jump();
-                    break;
-            }
-            /* 
-            // 전진
-            if (command == 6)
-            {
-                animator.SetBool("Walk", true);
-                animator.SetTrigger("Trigger");
-            }
-            // 후진
-            else if (command == 4)
-            {
-                animator.SetBool("BWalk", true);
-                animator.SetTrigger("Trigger");
-            }
-            // 정지
-            else if (command == 5)
-            {
-                animator.SetBool("Walk", false);
-                animator.SetBool("BWalk", false);
-            }
-            
-
-            // 커맨드 영역
-            if (command == 6)
-                if (searchCommands("656") && animator.GetBool("FrontDash") == false && Time.time - postCommandTime < 0.15f)
-                    frontDash();
-                //else if (animator.GetBool("FrontDash"))
-                  //  animator.SetBool("Run", true);
-            if (command == 4)
-                if (searchCommands("454") && animator.GetBool("BackDash") == false && Time.time - postCommandTime < 0.15f)
-                    backDash();
-            if (command == 1 || command == 2 || command == 3)
-                crouch();
-            if (command == 7 || command == 8 || command == 9)
-                jump();
-            if (command == 5)
-                Idle();
-            
+            action.excute(transform);
+            action.record();
         }
-        else if(status.CurrentState == State.Crouching)
-        {
-            if (command == 1)
-            {
-                crouch();
-                animator.SetBool("BWalk", true);
-            }
-            if (command == 3)
-            {
-                crouch();
-                animator.SetBool("Walk", true);
-            }
-            if (command == 2)
-                crouch();
-            if (command == 5)
-                Idle();
-        }
-        else if(status.CurrentState == State.Attacking)
-        {
-            if (command == 2)
-                crouch();
-            if (command == 5)
-                Idle();
-        }
-    */
     }
 
     // 커맨드를 얻는 함수
@@ -373,54 +367,33 @@ public class PlayerController : MonoBehaviour
         animator.SetBool("Standing", true);
     }
 
-    //public class Action
-    //{
-    //    public Action() { Debug.Log("부모클래스 생성자"); }
-    //    ~Action() { Debug.Log("부모클래스 소멸자"); }
-    //    public virtual void excute() { }
-    //}
-    //public class LPAction : Action
-    //{
-    //    public LPAction() { Debug.Log("자식클래스 생성자"); }
-    //    ~LPAction() { Debug.Log("자식클래스 소멸자"); }
-    //    public override void excute() { }
-    //}
-    //public class RPAction : Action
-    //{
-    //    public RPAction() { Debug.Log("자식클래스 생성자"); }
-    //    ~RPAction() { Debug.Log("자식클래스 소멸자"); }
-    //}
-    //public class LKAction : Action
-    //{
-    //    public LKAction() { Debug.Log("자식클래스 생성자"); }
-    //    ~LKAction() { Debug.Log("자식클래스 소멸자"); }
-    //}
-    //public class RKAction : Action
-    //{
-    //    public RKAction() { Debug.Log("자식클래스 생성자"); }
-    //    ~RKAction() { Debug.Log("자식클래스 소멸자"); }
-    //}
+    
 
-    void PlayAction(CommandSystem.Command command, Queue<int>commands, KeyCode code)
+    CommandPattern.Action PlayAction(CommandSystem.Command command, Queue<int>commands, KeyCode code)
     {
+        CommandPattern.Action action = null;
+
         if (code == KeyCode.U)
-            activeLP(command, commands);
+            action = activeLP(command, commands);
         else if (code == KeyCode.I)
-            activeRP(command, commands);
+            action = activeRP(command, commands);
         else if (code == KeyCode.J)
-            activeLK(command, commands);
+            action = activeLK(command, commands);
         else if (code == KeyCode.K)
-            activeRK(command, commands);
+            action = activeRK(command, commands);
+
+        return action;
     }
     // 왼손 공격 탐색, 실행
-    void activeLP(CommandSystem.Command command, Queue<int> commands)
+    CommandPattern.Action activeLP(CommandSystem.Command command, Queue<int> commands)
     {
         int code = 0;
+        CommandPattern.Action action = null;
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "65") && command.PostCommand == 6)
+                if (searchCommands(commands, "656") && command.PostCommand == 6)
                     code = 9;
                 else if (command.PostCommand == 6)
                     code = 2;
@@ -434,9 +407,9 @@ public class PlayerController : MonoBehaviour
                     code = 7;
                 else if (command.PostCommand == 8)
                     code = 8;
-                
                 else
-                    code = 4; // code 1;
+                    code = 4;
+                    //action = new CommandPattern.LeftZap(GetComponent<PlayerController>());
                 break;
             case State.Crouching:
                 break;
@@ -445,40 +418,45 @@ public class PlayerController : MonoBehaviour
         if (code != 0)
         {
             // 애니메이션 실행
-            animator.SetInteger("LPunch", code);
-            animator.SetTrigger("Trigger");
+            //animator.SetInteger("LPunch", code);
+            //animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
 
-            attackInfoDictLP.TryGetValue(code, out attackInfo); // 이 부분을 attackInfo대신 명령 패턴을 꺼내도록 개선
+            attackInfoDictLP.TryGetValue(code, out attackInfo); // 이 부분을 attackInfo대신 명령 패턴을 꺼내도록 개선 > 둘다 꺼내야함, attackInfo를 히트에서 사용함
+
+            attackInfoCommandLP.TryGetValue(code, out action);
 
             // 공격상태로 전환
-            status.CurrentState = State.Attacking;
+            //status.CurrentState = State.Attacking;
 
             // 행동중 표시
-            animator.SetBool("Acting", true);
+            //animator.SetBool("Acting", true);
         }
-        //commands.Clear();
-        //clearCommands();
+
         command.Clear();
+
+        return action;
     }
 
     // 오른손 공격 탐색, 실행
-    void activeRP(CommandSystem.Command command, Queue<int> commands)
+    CommandPattern.Action activeRP(CommandSystem.Command command, Queue<int> commands)
     {
         int code = 0;
+        CommandPattern.Action action = null;
+
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
             case State.Standing:
-                if (searchCommands(commands, "56") && command.PostCommand == 6)
-                    code = 2;
-                else if (searchCommands(commands, "53") && command.PostCommand == 3)
-                    code = 3;
-                else if (searchCommands(commands, "523") && command.PostCommand == 3)
+                if (searchCommands(commands, "523") && command.PostCommand == 3)
                     code = 5;
-                else if (searchCommands(commands, "54") && command.PostCommand == 4)
+                else if (command.PostCommand == 6)
+                    code = 2;
+                else if (command.PostCommand == 3)
+                    code = 3;
+                else if (command.PostCommand == 4)
                     code = 6;
                 else
                     code = 1;
@@ -491,8 +469,8 @@ public class PlayerController : MonoBehaviour
         if (code != 0)
         {
             // 애니메이션 실행
-            animator.SetInteger("RPunch", code);
-            animator.SetTrigger("Trigger");
+            //animator.SetInteger("RPunch", code);
+            //animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -500,22 +478,28 @@ public class PlayerController : MonoBehaviour
             // attackInfo저장
             attackInfoDictRP.TryGetValue(code, out attackInfo);
 
+            attackInfoCommandRP.TryGetValue(code, out action);
+
             // 공격상태로 전환
-            status.CurrentState = State.Attacking;
+            //status.CurrentState = State.Attacking;
 
             // 행동중 표시
-            animator.SetBool("Acting", true);
+            //animator.SetBool("Acting", true);
         }
 
         //clearCommands();
         command.Clear();
+        return action;
+
     }
 
     // 왼발 공격 탐색, 실행
-    void activeLK(CommandSystem.Command command, Queue<int> commands)
+    CommandPattern.Action activeLK(CommandSystem.Command command, Queue<int> commands)
     {
         // 선자세
         int code = 0;
+        CommandPattern.Action action = null;
+
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
@@ -528,7 +512,6 @@ public class PlayerController : MonoBehaviour
                     code = 2;
                 else if (command.PostCommand == 3)
                     code = 5;
-                
                 else
                     code = 1;
                 break;
@@ -540,8 +523,8 @@ public class PlayerController : MonoBehaviour
         if (code != 0)
         {
             // 애니메이션 실행
-            animator.SetInteger("LKick", code);
-            animator.SetTrigger("Trigger");
+            //animator.SetInteger("LKick", code);
+            //animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -549,22 +532,27 @@ public class PlayerController : MonoBehaviour
             // attackInfo저장
             attackInfoDictLK.TryGetValue(code, out attackInfo);
 
+            attackInfoCommandLK.TryGetValue(code, out action);
+
             // 공격상태로 전환
-            status.CurrentState = State.Attacking;
+            //status.CurrentState = State.Attacking;
 
             // 행동중 표시
-            animator.SetBool("Acting", true);
+            //animator.SetBool("Acting", true);
         }
 
         //clearCommands();
         command.Clear();
+        return action;
     }
 
     // 오른발 공격 탐색, 실행
-    void activeRK(CommandSystem.Command command, Queue<int> commands)
+    CommandPattern.Action activeRK(CommandSystem.Command command, Queue<int> commands)
     {
         // 선자세
         int code = 0;
+        CommandPattern.Action action = null;
+
         // 상태에 따른 동작
         switch (status.CurrentState)
         {
@@ -592,8 +580,8 @@ public class PlayerController : MonoBehaviour
         if (code != 0)
         { 
             // 애니메이션 실행
-            animator.SetInteger("RKick", code);
-            animator.SetTrigger("Trigger");
+            //animator.SetInteger("RKick", code);
+            //animator.SetTrigger("Trigger");
 
             // 애니메니터 변수 초기화
             //clearAnimator();
@@ -601,16 +589,559 @@ public class PlayerController : MonoBehaviour
             // attackInfo저장
             attackInfoDictRK.TryGetValue(code, out attackInfo);
 
+            attackInfoCommandRK.TryGetValue(code, out action);
+
             // 공격상태로 전환
-            status.CurrentState = State.Attacking;
+            //status.CurrentState = State.Attacking;
 
             // 행동중 표시
-            animator.SetBool("Acting", true);
+            //animator.SetBool("Acting", true);
         }
 
         //clearCommands();
         command.Clear();
+        return action;
     }
+
+    // 움직임 관련 함수
+   
+    // 대기
+    public void idle(int priority, AttackArea.FrameData frameData)
+    {
+        // 아닐 경우 기존 행동을 지속한다.
+        if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(idle(frameData));
+    }
+
+    IEnumerator idle(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        status.Guard = GuardState.NoGuard;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        AttackEnd();
+    }
+
+
+    // 전진
+    public void forwardWalk(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(forwardWalk(frameData));
+    }
+
+    IEnumerator forwardWalk(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("Walk", true);
+        animator.SetTrigger("Trigger");
+        status.Guard = GuardState.NoGuard;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("Walk", false);
+        AttackEnd();
+    }
+
+    // 전진 대쉬
+    public void forwardDash(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(forwardDash(frameData));
+    }
+
+    IEnumerator forwardDash(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("FrontDash", true);
+        animator.SetTrigger("Trigger");
+        status.Guard = GuardState.NoGuard;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("FrontDash", false);
+        AttackEnd();
+    }
+
+    // 뒤로 걷기
+    public void backwardWalk(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if ((currentPriority == (int)Colosseum.ActionPriority.Move || currentPriority == (int)Colosseum.ActionPriority.Dash) && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(backwardWalk(frameData));
+    }
+
+    IEnumerator backwardWalk(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("BWalk", true);
+        animator.SetTrigger("Trigger");
+        status.Guard = GuardState.Stand;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("BWalk", false);
+        status.Guard = GuardState.NoGuard;
+
+        AttackEnd();
+    }
+
+    // 뒤로 대쉬
+    public void backwardDash(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(backwardDash(frameData));
+    }
+
+    IEnumerator backwardDash(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("BackDash", true);
+        animator.SetTrigger("Trigger");
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("BackDash", false);
+        AttackEnd();
+    }
+
+    // 앉기
+    public void crouch(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(crouch(frameData));
+    }
+
+    IEnumerator crouch(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("Sit", true);
+        animator.SetBool("Standing", false);
+
+        animator.SetTrigger("Trigger");
+        status.Guard = GuardState.NoGuard;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("Sit", false);
+        animator.SetBool("Standing", true);
+        AttackEnd();
+    }
+
+    // 앉아서 앞으로 걷기
+    public void crouchForwardWalk(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(crouchForwardWalk(frameData));
+    }
+
+    IEnumerator crouchForwardWalk(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("Sit", true);
+        animator.SetBool("Standing", false);
+        animator.SetBool("Walk", true);
+        animator.SetTrigger("Trigger");
+        status.Guard = GuardState.NoGuard;
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("Sit", false);
+        animator.SetBool("Standing", true);
+        animator.SetBool("Walk", false);
+        AttackEnd();
+    }
+
+
+    // 앉아서 뒤로 걷기
+    public void crouchBackwardWalk(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if (currentPriority == (int)Colosseum.ActionPriority.Move && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(crouchBackwardWalk(frameData));
+    }
+
+    IEnumerator crouchBackwardWalk(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("Sit", true);
+        animator.SetBool("Standing", false);
+        animator.SetBool("BWalk", true);
+        animator.SetTrigger("Trigger");
+
+        status.Guard = GuardState.Crouch;
+
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        animator.SetBool("Sit", false);
+        animator.SetBool("Standing", true);
+        animator.SetBool("BWalk", false);
+
+        status.Guard = GuardState.NoGuard;
+
+        AttackEnd();
+    }
+
+    // 히트
+    public void hitHigh(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(hitHigh(frameData));
+    }
+
+    IEnumerator hitHigh(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetInteger("HitPos", 1);
+        animator.SetBool("Hited", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetInteger("HitPos", 0);
+        animator.SetBool("Hited", false);
+        AttackEnd();
+    }
+
+    public void hitMiddle(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(hitMiddle(frameData));
+    }
+
+    IEnumerator hitMiddle(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetInteger("HitPos", 2);
+        animator.SetBool("Hited", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetInteger("HitPos", 0);
+        animator.SetBool("Hited", false);
+        AttackEnd();
+    }
+
+    public void hitLow(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(hitLow(frameData));
+    }
+
+    IEnumerator hitLow(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetInteger("HitPos", 3);
+        animator.SetBool("Hited", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetInteger("HitPos", 0);
+        animator.SetBool("Hited", false);
+        AttackEnd();
+    }
+
+    public void guardHigh(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(guardHigh(frameData));
+    }
+
+    IEnumerator guardHigh(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("StandingGuard", true);
+        opponentAnimator.SetBool("Blocked", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetBool("StandingGuard", false);
+        AttackEnd();
+    }
+
+    public void guardMiddle(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(guardMiddle(frameData));
+    }
+
+    IEnumerator guardMiddle(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("StandingGuard", true);
+        opponentAnimator.SetBool("Blocked", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetBool("StandingGuard", false);
+        AttackEnd();
+    }
+
+    public void guardLow(int priority, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동이 있을경우 취소하고 피격한다.
+        if (currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(guardLow(frameData));
+    }
+
+    IEnumerator guardLow(AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        clearAnimator();
+
+        animator.SetBool("CrouchGuard", true);
+        opponentAnimator.SetBool("Blocked", true);
+
+        // 행동 시작
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 행동 끝
+        currentCoroutine = null;
+        animator.SetBool("CrouchGuard", false);
+        AttackEnd();
+    }
+
 
     // 앞대시
     void frontDash()
@@ -625,6 +1156,8 @@ public class PlayerController : MonoBehaviour
     void backDash()
     {
         animator.SetBool("BackDash", true);
+
+        clearCommands();
     }
 
     // 앉기
@@ -688,7 +1221,7 @@ public class PlayerController : MonoBehaviour
         animator.SetInteger("RKick", 0);
         animator.SetBool("Blocked", false);
 
-        attackInfo = null;
+        //attackInfo.Clear();
         status.CurrentState = State.Standing;
         Idle();
 
@@ -707,7 +1240,7 @@ public class PlayerController : MonoBehaviour
         animator.SetInteger("RKick", 0);
         animator.SetBool("Blocked", false);
 
-        attackInfo = null;
+        //attackInfo.Clear();
         status.CurrentState = State.Crouching;
         animator.SetBool("Sit", true);
 
@@ -716,12 +1249,7 @@ public class PlayerController : MonoBehaviour
 
         // 미완성
         //animator.SetInteger("TriggerNum", (int)AnimatorTrigger.CrouchingIdle);
-    }
-
-    void Hit()
-    {
-        
-    }
+    } 
 
     void FootR()
     {
@@ -737,31 +1265,33 @@ public class PlayerController : MonoBehaviour
         status.Guard = guard;
     }
 
-    void actionBasedOnState(CommandSystem.Command command, CommandEnum currentCommand, Queue<int> commands)
+    CommandPattern.Action actionBasedOnState(CommandSystem.Command command, CommandEnum currentCommand, Queue<int> commands)
     {
+        CommandPattern.Action action = null;
         switch (status.CurrentState)
         {
             case State.Standing:
                 switch (currentCommand)
                 {
                     case CommandEnum.E:
-                        stateBehaviour.ForwardWalk(animator);
+                        action = new CommandPattern.ForwardWalk(GetComponent<PlayerController>());
                         if (searchCommands(commands, "656") && animator.GetBool("FrontDash") == false && Time.time - command.PostCommandTime < 0.15f)
-                            frontDash();
+                            action = new CommandPattern.ForwardDash(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.W:
+                        action = new CommandPattern.BackwardWalk(GetComponent<PlayerController>());
                         if (searchCommands(commands, "454") && animator.GetBool("BackDash") == false && Time.time - command.PostCommand < 0.15f)
-                            backDash();
-                        stateBehaviour.BackwardWalk(animator);
+                            action = new CommandPattern.BackwardDash(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.Neutral:
-                        stateBehaviour.WalkStop(animator);
-                        Idle();
+                        //stateBehaviour.WalkStop(animator);
+                        //Idle();
+                            action = new CommandPattern.Idle(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.SW:
                     case CommandEnum.S:
                     case CommandEnum.SE:
-                        crouch();
+                        action = new CommandPattern.Crouch(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.NW:
                     case CommandEnum.N:
@@ -774,18 +1304,17 @@ public class PlayerController : MonoBehaviour
                 switch (currentCommand)
                 {
                     case CommandEnum.SW:
-                        crouch();
-                        animator.SetBool("BWalk", true);
+                        action = new CommandPattern.CrouchBackwardWalk(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.SE:
-                        crouch();
-                        animator.SetBool("Walk", true);
+                        action = new CommandPattern.CrouchForwardWalk(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.S:
-                        crouch();
+                        action = new CommandPattern.Crouch(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.Neutral:
-                        Idle();
+                        //Idle();
+                        action = new CommandPattern.Idle(GetComponent<PlayerController>());
                         break;
                 }
                 break;
@@ -793,14 +1322,15 @@ public class PlayerController : MonoBehaviour
                 switch (currentCommand)
                 {
                     case CommandEnum.S:
-                        crouch();
+                        action = new CommandPattern.Crouch(GetComponent<PlayerController>());
                         break;
                     case CommandEnum.Neutral:
-                        Idle();
+                        //Idle();
                         break;
                 }
                 break;
         }
+        return action;
     }
 
     void guardStateBasedOnCommand(CommandEnum command)
@@ -811,5 +1341,356 @@ public class PlayerController : MonoBehaviour
             guard(GuardState.Crouch);
         else
             guard(GuardState.NoGuard);
+    }
+
+    // EnemyController에 있던것 옮김
+    // 피격 당함
+    public void Hit(AttackArea.AttackInfo attackInfo)
+    {
+        CommandPattern.Action action = null;
+        //Debug.Log("1");
+        if (isHit)
+            return;
+        //Debug.Log("2");
+        if (isGuard)
+            return;
+        //Debug.Log("3");
+        // 가드 확인
+        switch (attackInfo.attackType)
+        {
+            case AttackArea.AttackType.upper:
+                if (status.CurrentState == State.Crouching)
+                    return;
+                if (status.Guard == GuardState.Stand)
+                {
+                    //standingGuard(attackInfo);
+                    action = new CommandPattern.GuardHigh(GetComponent<PlayerController>());
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+                    isGuard = true;
+
+                    action.excute(transform);
+                    return;
+                }
+                break;
+            case AttackArea.AttackType.middle:
+                if (status.Guard == GuardState.Stand)
+                {
+                    //standingGuard(attackInfo);
+                    action = new CommandPattern.GuardMiddle(GetComponent<PlayerController>());
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+                    isGuard = true;
+
+                    action.excute(transform);
+                    return;
+                }
+                break;
+            case AttackArea.AttackType.lower:
+                if (status.Guard == GuardState.Crouch)
+                {
+                    //crouchGuard(attackInfo);
+                    action = new CommandPattern.GuardLow(GetComponent<PlayerController>());
+                    effectManager.PlayGuardEffect(attackInfo.hitPos);
+
+                    action.excute(transform);
+                    return;
+                }
+                break;
+        }
+        //Debug.Log("4");
+        // 공격에 따른 피격 모션
+        switch (attackInfo.attackType)
+        {
+            case AttackArea.AttackType.upper:
+                //animator.SetInteger("HitPos", 1);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
+                action = new CommandPattern.HitHigh(GetComponent<PlayerController>());
+                break;
+            case AttackArea.AttackType.middle:
+                //animator.SetInteger("HitPos", 2);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
+                action = new CommandPattern.HitMiddle(GetComponent<PlayerController>());
+                break;
+            case AttackArea.AttackType.lower:
+                //animator.SetInteger("HitPos", 3);
+                effectManager.PlayHitEffect(attackInfo.hitPos);
+                action = new CommandPattern.HitLow(GetComponent<PlayerController>());
+                break;
+        }
+
+        //Debug.Log("Hited");
+        //animator.SetBool("Hited", true);
+        if (action != null)
+            action.excute();
+
+        HitEvent.Invoke();
+        status.Damaged(attackInfo.attackPower);
+        //Debug.Log("power : " + attackInfo.attackPower);
+        GetComponent<Rigidbody>().velocity = Vector3.zero;
+        GetComponent<Rigidbody>().AddForce(attackInfo.force);
+
+        manager.SendMessage("UIUpdate");
+    }
+
+    void EndHit()
+    {
+        isHit = false;
+        animator.SetBool("Hited", false);
+
+        status.CurrentState = State.Standing;
+    }
+
+    void EndGuard()
+    {
+        animator.SetBool("StandingGuard", false);
+        animator.SetBool("CrouchGuard", false);
+
+        isGuard = false;
+
+        status.CurrentState = State.Standing;
+    }
+
+    void standingGuard(AttackArea.AttackInfo attackInfo)
+    {
+        animator.SetBool("StandingGuard", true);
+
+        GetComponent<Rigidbody>().AddForce(attackInfo.force);
+
+        opponentAnimator.SetBool("Blocked", true);
+
+        manager.SendMessage("UIUpdate");
+    }
+
+    void crouchGuard(AttackArea.AttackInfo attackInfo)
+    {
+        animator.SetBool("CrouchGuard", true);
+
+        GetComponent<Rigidbody>().AddForce(attackInfo.force);
+
+        opponentAnimator.SetBool("Blocked", true);
+
+        manager.SendMessage("UIUpdate");
+    }
+
+    // 커맨드 패턴 사용해서 코루틴으로 돌리고 
+    // 위의 액티브 코루틴은 중간에 멈추면 안되니까 멈추는거 막고 연계공격은 아직 모르겠음
+    // 멈추는거 막을 때 히트로 인한 상황을 염두해 둬야함, 커맨드 패턴 실행 될때 저장해놓고 리플레이로 활용
+    // 커맨드 패턴은 active rp lp rk lk에서 뱉어내게 하고 그것을 최종 비교를 통해서 하나씩 실행 그리고 실행한 것을 저장
+    public void activeCoroutineLP(int actionCode, int priority, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if ((currentPriority == (int)Colosseum.ActionPriority.Move || currentPriority == (int)Colosseum.ActionPriority.Dash) && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(ActiveActionLP(actionCode, attackInfo, frameData));
+    }
+
+    IEnumerator ActiveActionLP(int actionCode, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        animator.SetInteger("LPunch", actionCode);
+        animator.SetTrigger("Trigger");
+        animator.SetBool("Acting", true);
+
+        this.attackInfo = attackInfo;
+        status.Guard = GuardState.NoGuard;
+
+        // 공격 시작
+        while (frameData.startHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        attackAreaManager.SendMessage("StartAttackHit");
+        // while을 통해서 n프레임시작 n프레임 끝을 지정
+        // 히트 판정 시작
+        while (frameData.endHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        attackAreaManager.SendMessage("EndAttackHit");
+        // 히트 판정 끝
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        AttackEnd();
+    }
+
+    public void activeCoroutineRP(int actionCode, int priority, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if ((currentPriority == (int)Colosseum.ActionPriority.Move || currentPriority == (int)Colosseum.ActionPriority.Dash) && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(ActiveActionRP(actionCode, attackInfo, frameData));
+    }
+
+    IEnumerator ActiveActionRP(int actionCode, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        animator.SetInteger("RPunch", actionCode);
+        animator.SetTrigger("Trigger");
+        animator.SetBool("Acting", true);
+
+        this.attackInfo = attackInfo;
+        status.Guard = GuardState.NoGuard;
+
+
+        // 공격 시작
+        while (frameData.startHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        attackAreaManager.SendMessage("StartAttackHit");
+        // while을 통해서 n프레임시작 n프레임 끝을 지정
+        // 히트 판정 시작
+        while (frameData.endHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 히트 판정 끝
+        attackAreaManager.SendMessage("EndAttackHit");
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        AttackEnd();
+    }
+
+    public void activeCoroutineLK(int actionCode, int priority, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if ((currentPriority == (int)Colosseum.ActionPriority.Move || currentPriority == (int)Colosseum.ActionPriority.Dash) && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(ActiveActionLK(actionCode, attackInfo, frameData));
+    }
+
+    IEnumerator ActiveActionLK(int actionCode, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        animator.SetInteger("LKick", actionCode);
+        animator.SetTrigger("Trigger");
+        animator.SetBool("Acting", true);
+
+        this.attackInfo = attackInfo;
+        status.Guard = GuardState.NoGuard;
+
+
+        // 공격 시작
+        while (frameData.startHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // while을 통해서 n프레임시작 n프레임 끝을 지정
+        // 히트 판정 시작
+        attackAreaManager.SendMessage("StartAttackHit");
+        while (frameData.endHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 히트 판정 끝
+        attackAreaManager.SendMessage("EndAttackHit");
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        AttackEnd();
+    }
+
+    public void activeCoroutineRK(int actionCode, int priority, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        // 현재 실행중인 행동의 우선순위가 이동인 경우 중단하고 실행
+        if ((currentPriority == (int)Colosseum.ActionPriority.Move || currentPriority == (int)Colosseum.ActionPriority.Dash) && currentCoroutine != null)
+        {
+            StopCoroutine(currentCoroutine);
+            currentCoroutine = null;
+        }
+        // 입력 받을 수 있는 상황일 경우 어떤 행동인지 확인한다(연계 공격 준비)
+        // 아닐 경우 기존 행동을 지속한다.
+        else if (currentCoroutine != null)
+            return;
+
+        // 실행
+        currentPriority = priority;
+        currentCoroutine = StartCoroutine(ActiveActionRK(actionCode, attackInfo, frameData));
+    }
+
+    IEnumerator ActiveActionRK(int actionCode, AttackArea.AttackInfo attackInfo, AttackArea.FrameData frameData)
+    {
+        int currentFrame = 0;
+        animator.SetInteger("RKick", actionCode);
+        animator.SetTrigger("Trigger");
+        animator.SetBool("Acting", true);
+
+        this.attackInfo = attackInfo;
+        status.Guard = GuardState.NoGuard;
+
+
+        // 공격 시작
+        while (frameData.startHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        attackAreaManager.SendMessage("StartAttackHit");
+        // while을 통해서 n프레임시작 n프레임 끝을 지정
+        // 히트 판정 시작
+        while (frameData.endHitFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 히트 판정 끝
+        attackAreaManager.SendMessage("EndAttackHit");
+        while (frameData.actionFrame > currentFrame)
+        {
+            currentFrame++;
+            yield return new WaitForFixedUpdate();
+        }
+        // 공격 끝
+        currentCoroutine = null;
+        AttackEnd();
     }
 }

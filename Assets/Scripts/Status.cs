@@ -12,7 +12,7 @@ public class Status : MonoBehaviour
     public State currentState;
     public State CurrentState { get { return currentState; } set { currentState = value; } }
 
-    GuardState guard;
+    public GuardState guard;
     public GuardState Guard { get { return guard; } set { guard = value; } }
 
     public HitState HitState;
