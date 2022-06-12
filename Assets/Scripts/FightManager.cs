@@ -5,8 +5,8 @@ using UnityEngine.UI;
 
 public class FightManager : MonoBehaviour
 {
-    PlayerController player;
-    PlayerController enemy;
+    GameObject player;
+    GameObject enemy;
     AttackAreaManager playerAttackAreaManager;
     AttackAreaManager enemyAttackAreaManager;
     Status playerStatus;
@@ -23,9 +23,10 @@ public class FightManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        player = GameObject.Find("1pPlayer").GetComponent<PlayerController>();
-        enemy = GameObject.Find("2pPlayer").GetComponent<PlayerController>();
-        playerAttackAreaManager = FindObjectOfType<AttackAreaManager>();
+        player = GameObject.Find("1pPlayer");
+        enemy = GameObject.Find("2pPlayer");
+        playerAttackAreaManager = GameObject.Find("1pPlayer").GetComponent<AttackAreaManager>();
+        enemyAttackAreaManager = GameObject.Find("2pPlayer").GetComponent<AttackAreaManager>();
 
         playerStatus = GameObject.Find("1pPlayer").GetComponent<Status>();
         enemyStatus = GameObject.Find("2pPlayer").GetComponent<Status>();
@@ -40,7 +41,10 @@ public class FightManager : MonoBehaviour
         Win2p = GameObject.Find("WinPanel").transform.GetChild(1).gameObject;
 
         GameObject.Find("1pPlayer").GetComponent<PlayerController>().HitEvent.AddListener(GameEnd);
-        GameObject.Find("2pPlayer").GetComponent<PlayerController>().HitEvent.AddListener(GameEnd);
+        if (GameObject.Find("2pPlayer").tag == "Player")
+            GameObject.Find("2pPlayer").GetComponent<PlayerController>().HitEvent.AddListener(GameEnd);
+        else if (GameObject.Find("2pPlayer").tag == "Enemy")
+            GameObject.Find("2pPlayer").GetComponent<EnemyController_child>().HitEvent.AddListener(GameEnd);
 
         GameReset();
     }
@@ -62,6 +66,7 @@ public class FightManager : MonoBehaviour
     void UIUpdate()
     {
         playerSlider.value = (float)playerStatus.Hp / (float)playerStatus.MaxHp;
+
         enemySlider.value = (float)enemyStatus.Hp / (float)enemyStatus.MaxHp;
     }
 

@@ -1,0 +1,40 @@
+tree("Root")
+	random
+		tree("Move")
+		tree("Action")
+		tree("Guard")
+
+tree("Move")
+	random
+		tree("Move_Forward")
+		tree("Dash_Forward")
+
+tree("Move_Forward")
+	sequence
+		BT_IsClose
+		BT_MoveForward
+
+tree("Dash_Forward")
+	sequence
+		BT_IsFar
+		BT_DashForward
+
+tree("Action")
+	random
+		tree("CloseAction")
+		tree("FarAction")
+
+tree("CloseAction")
+	sequence
+		BT_IsClose
+		BT_Action1
+
+tree("FarAction")
+	random
+		BT_Action1
+		BT_Action2
+
+tree("Guard")
+	random
+		BT_StandGuard
+		BT_CrouchGuard

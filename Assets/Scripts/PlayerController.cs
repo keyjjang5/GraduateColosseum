@@ -9,19 +9,19 @@ using Colosseum;
 
 public class PlayerController : MonoBehaviour
 {
-    private Animator animator;
+    protected Animator animator;
 
-    Transform center;
+    protected Transform center;
 
     Vector3 velocity = Vector3.zero;
     Vector3 currentVelocity = Vector3.zero;
 
     // 커맨드관련 변수
-    Queue<int> commands;
+    protected Queue<int> commands;
     int postCommand = 0;
     // 커맨드 입력
     // Vector2(horizontal, vertical)
-    Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
+    protected Dictionary<Vector2, Vector3> horiVer = new Dictionary<Vector2, Vector3>()
         {
             {new Vector2(-1, -1), Vector3.zero },
             {new Vector2(-1, 0), Vector3.back },
@@ -35,7 +35,7 @@ public class PlayerController : MonoBehaviour
             {new Vector2(1, 0), Vector3.forward },
             {new Vector2(1, 1), Vector3.zero }
         };
-    Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
+    protected Dictionary<Vector2, int> horiVerCommand = new Dictionary<Vector2, int>()
         {
             {new Vector2(-1, -1), 1 },
             {new Vector2(-1, 0), 4 },
@@ -51,17 +51,17 @@ public class PlayerController : MonoBehaviour
         };
 
     [SerializeField]
-    Dictionary<int, AttackArea.AttackInfo> attackInfoDictLP;
-    Dictionary<int, AttackArea.AttackInfo> attackInfoDictRP;
-    Dictionary<int, AttackArea.AttackInfo> attackInfoDictLK;
-    Dictionary<int, AttackArea.AttackInfo> attackInfoDictRK;
+    protected Dictionary<int, AttackArea.AttackInfo> attackInfoDictLP;
+    protected Dictionary<int, AttackArea.AttackInfo> attackInfoDictRP;
+    protected Dictionary<int, AttackArea.AttackInfo> attackInfoDictLK;
+    protected Dictionary<int, AttackArea.AttackInfo> attackInfoDictRK;
 
-    Dictionary<int, CommandPattern.Action> attackInfoCommandLP;
-    Dictionary<int, CommandPattern.Action> attackInfoCommandRP;
-    Dictionary<int, CommandPattern.Action> attackInfoCommandLK;
-    Dictionary<int, CommandPattern.Action> attackInfoCommandRK;
+    protected Dictionary<int, CommandPattern.Action> attackInfoCommandLP;
+    protected Dictionary<int, CommandPattern.Action> attackInfoCommandRP;
+    protected Dictionary<int, CommandPattern.Action> attackInfoCommandLK;
+    protected Dictionary<int, CommandPattern.Action> attackInfoCommandRK;
 
-    Status status;
+    protected Status status;
     public AttackArea.AttackInfo attackInfo;
     FightManager fightManager;
 
@@ -72,7 +72,7 @@ public class PlayerController : MonoBehaviour
     bool isHit;
     Animator opponentAnimator;
     public UnityEvent HitEvent;
-    GameObject manager;
+    protected GameObject manager;
     public EffectManager effectManager;
 
     bool isGuard;
@@ -80,9 +80,11 @@ public class PlayerController : MonoBehaviour
     Coroutine currentCoroutine;
     int currentPriority;
 
-    AttackAreaManager attackAreaManager;
+    protected AttackAreaManager attackAreaManager;
 
-    ReplaySystem replaySystem;
+    protected ReplaySystem replaySystem;
+
+    protected PlayerController playerController;
 
     // Start is called before the first frame update
     void Start()
@@ -246,6 +248,11 @@ public class PlayerController : MonoBehaviour
         attackAreaManager = GetComponent<AttackAreaManager>();
 
         replaySystem = FindObjectOfType<ReplaySystem>();
+
+        if (tag == "Player")
+            playerController = GetComponent<PlayerController>();
+        else if (tag == "Enemy")
+            playerController = GetComponent<EnemyController_child>();
     }
 
     // Update is called once per frame
@@ -655,7 +662,7 @@ public class PlayerController : MonoBehaviour
         currentCoroutine = StartCoroutine(forwardWalk(frameData));
     }
 
-    IEnumerator forwardWalk(AttackArea.FrameData frameData)
+    protected IEnumerator forwardWalk(AttackArea.FrameData frameData)
     {
         int currentFrame = 0;
         clearAnimator();
@@ -1260,7 +1267,7 @@ public class PlayerController : MonoBehaviour
 
     }
 
-    void guard(GuardState guard)
+    protected void guard(GuardState guard)
     {
         status.Guard = guard;
     }

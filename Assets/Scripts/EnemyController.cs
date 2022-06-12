@@ -5,6 +5,9 @@ using UnityEngine.Events;
 
 using Colosseum;
 
+using Panda;
+
+
 public class EnemyController : MonoBehaviour
 {
     bool isHit;
@@ -53,7 +56,6 @@ public class EnemyController : MonoBehaviour
     // 피격 당함
     public void Hit(AttackArea.AttackInfo attackInfo)
     {
-        Debug.Log("6");
         if (isHit)
             return;
         if (isGuard)
@@ -188,5 +190,89 @@ public class EnemyController : MonoBehaviour
     void Crouching()
     {
         status.CurrentState = State.Crouching;
+    }
+
+
+    float bt_t = 0;
+    // PandaBT 관련 함수
+      [Task]
+    void BT_IsClose()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_MoveForward()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_IsFar()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_DashForward()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_Action1()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_Action2()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_StandGuard()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
+    }
+    [Task]
+    void BT_CrouchGuard()
+    {
+        bt_t += Time.fixedDeltaTime;
+        if (bt_t >= 1.0f)
+        {
+            ThisTask.Succeed();
+            bt_t = 0;
+        }
     }
 }

@@ -7,11 +7,14 @@ public class AttackArea : MonoBehaviour
     EnemyController enemyController;
     void Start()
     {
-        playerController = transform.root.GetComponent<PlayerController>();
-        if(transform.name == "1pPlayer")
-            enemyController = GameObject.Find("2pPlayer").GetComponent<EnemyController>();
-        else if(transform.name == "2pPlayer")
-            enemyController = GameObject.Find("1pPlayer").GetComponent<EnemyController>();
+        if (transform.root.tag == "Player")
+            playerController = transform.root.GetComponent<PlayerController>();
+        else if (transform.root.tag == "Enemy")
+            playerController = transform.root.GetComponent<EnemyController_child>();
+        //if (transform.root.name == "1pPlayer")
+        //    enemyController = GameObject.Find("2pPlayer").GetComponent<EnemyController>();
+        //else if(transform.root.name == "2pPlayer")
+        //    enemyController = GameObject.Find("1pPlayer").GetComponent<EnemyController>();
     }
 
 
